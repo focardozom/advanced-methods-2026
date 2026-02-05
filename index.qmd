@@ -12,26 +12,26 @@ Hi! I have included links and instructions for my sessions below (Francisco). Pl
 ::: {.g-col-12 .g-col-md-6}
 ### Sessions I
 
-- [**Software Tools**](software/index.qmd)
+- [**Software Tools (Feb 6)**](software/index.qmd)
   <br>*Data interoperability, R-Mplus integration, AI-assisted analysis*
 
-- [**Missing Data**](missing/index.qmd)
+- [**Missing Data (Feb 20)**](missing/index.qmd)
   <br>*MCAR, MAR, MNAR, multiple imputation, FIML*
 
-- [**Monte Carlo Simulation**](montecarlo/index.qmd)
+- [**Monte Carlo Simulation (Feb 27)**](montecarlo/index.qmd)
   <br>*Power analysis, parameter recovery, simulation studies*
 :::
 
 ::: {.g-col-12 .g-col-md-6}
 ### Sessions II
 
-- [**Multilevel Models**](multilevel/index.qmd)
+- [**Multilevel Models (Mar 20)**](multilevel/index.qmd)
   <br>*Random effects models, nested data structures*
 
-- [**Dyadic Data Analysis**](dyadic/index.qmd)
+- [**Dyadic Data Analysis (Mar 27)**](dyadic/index.qmd)
   <br>*Actor-Partner Interdependence Model, distinguishable dyads*
 
-- [**Causal Inference**](causal/index.qmd)
+- [**Causal Inference (Apr 10)**](causal/index.qmd)
   <br>*Observational studies, propensity scores, difference in differences*
 :::
 
