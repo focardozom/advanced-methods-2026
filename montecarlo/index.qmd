@@ -1,0 +1,35 @@
+---
+title: "Monte Carlo Simulation"
+date: "2026-02-27"
+---
+
+**Date:** Feb 27
+
+## Overview
+Monte Carlo simulation is a powerful computational method that uses repeated random sampling to solve complex problems. In this module, we will explore its history, core intuition (using a chess example), and real-world applications in research design, including sample size determination and power analysis.
+
+## Topics
+-   **Introduction & History**: From the Manhattan Project to modern applications.
+-   **Core Intuition**: Understanding probability through simulation (Chess Example).
+-   **Convergence**: How simulated results approach theoretical probabilities.
+-   **Applications**:
+    -   Sample Size Determination
+    -   Minimum Detectable Effect
+    -   Statistical Power Analysis
+
+## Slides
+[View Class Slides](slides.qmd)
+
+## Homework
+**Assignment #5:** Conduct Monte Carlo simulation study and interpret statistical power using Mplus. Due next week.
+
+## Readings
+
+### Required
+-   Muthén, L. K., & Muthén, B. O. (2002). How to use a Monte Carlo study to decide on sample size and determine power. *Structural equation modeling, 9*(4), 599-620.
+-   Durlak, J. A. (2009). How to select, calculate, and interpret effect sizes. *Journal of pediatric psychology, 34*(9), 917-928.
+
+### Supplemental
+-   Mooney, C. Z. (1997). *Monte Carlo simulation* (Vol. 116). Sage Publications. [Chapters 1, 2, 3]
+-   Muthén, B. O., & Curran, P. J. (1997). General longitudinal modeling of individual differences in experimental designs: A latent variable framework for analysis and power estimation. *Psychological methods, 2*(4), 371.
+-   Kraemer, H. C., & Blasey, C. (2015). *How many subjects? Statistical power analysis in research*. Sage Publications. [Chapters 1, 2]

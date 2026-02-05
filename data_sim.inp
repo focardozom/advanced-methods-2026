@@ -1,0 +1,5 @@
+TITLE: Your title goes here
+DATA: FILE = "data_sim.dat";
+VARIABLE: 
+NAMES = id age group theta item1 item2 item3 item4 item5; 
+MISSING=.;

@@ -1,0 +1,208 @@
+---
+title: "Assignment: CFA with Missing Data"
+subtitle: "Software Integration"
+author: "Francisco Cardozo, PhD"
+date: today
+---
+
+## Overview
+
+In this assignment, you will simulate psychological scale data, introduce missing data for one group, and then fit a confirmatory factor analysis (CFA) model. You will compare your estimated parameters to the true values from the simulation to evaluate how well your model recovers the population parameters.
+
+## Learning Objectives
+
+- Practice simulating psychological data with known parameters
+- Understand the impact of missing data on parameter estimation
+- Gain experience running CFA models in Mplus or lavaan
+- Critically evaluate model results against known true values
+
+## Instructions
+
+### Part 1: Data Simulation (20 points)
+
+Create a simulated dataset with the following characteristics:
+
+1. **Sample size**: N = 400
+2. **Groups**: Two groups (e.g., "Treatment" and "Control"), with 200 participants each
+3. **Latent construct**: One latent factor (e.g., "Wellbeing")
+4. **Items**: 5 Likert-scale items (1-5 scale)
+5. **True factor loadings**: Choose your own values between 0.5 and 0.9 for each item
+
+**Starter code:**
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidyverse)
+
+set.seed(YOUR_STUDENT_ID)  # Use your student ID for reproducibility
+n <- 400
+
+# Create your simulation here
+data_sim <- tibble(
+    id = 1:n,
+    group = rep(c("Treatment", "Control"), each = n/2),
+    # Add latent trait
+    theta = rnorm(n, mean = 0, sd = 1)
+) %>%
+    mutate(
+        # Generate 5 Likert items with YOUR chosen factor loadings
+        # item1 = round(pmin(5, pmax(1, 3 + λ1 * theta + rnorm(n, 0, error1)))),
+        # ... continue for all 5 items
+    )
+```
+
+**Deliverable**: Report your chosen factor loadings (λ₁ through λ₅) in a table.
+
+### Part 2: Introduce Missing Data (20 points)
+
+After creating your complete dataset, introduce missing data **only for the Treatment group**. 
+
+Requirements:
+
+- Make approximately 20% of the item responses missing for the Treatment group
+- The Control group should have no missing data
+- Missing data should be **Missing Completely at Random (MCAR)**
+
+**Starter code:**
+
+```{r}
+#| echo: true
+#| eval: false
+# Function to introduce MCAR missing data
+introduce_missing <- function(x, prop_missing = 0.20) {
+    n <- length(x)
+    missing_idx <- sample(1:n, size = round(n * prop_missing))
+    x[missing_idx] <- NA
+    return(x)
+}
+
+# Apply only to Treatment group
+data_missing <- data_sim %>%
+    mutate(
+        across(
+            starts_with("item"),
+            ~ if_else(group == "Treatment", introduce_missing(.), .)
+        )
+    )
+
+# Check missing data pattern
+data_missing %>%
+    group_by(group) %>%
+    summarise(across(starts_with("item"), ~ mean(is.na(.))))
+```
+
+**Deliverable**: Report the percentage of missing data for each item by group.
+
+### Part 3: CFA Model (30 points)
+
+Fit a one-factor CFA model to your data with missing values. You may use **either Mplus or lavaan** (or both for extra credit).
+
+#### Option A: lavaan
+
+```{r}
+#| echo: true
+#| eval: false
+library(lavaan)
+
+# Select only item variables
+data_cfa <- data_missing %>%
+    select(starts_with("item"))
+
+# Define model
+cfa_model <- '
+    Wellbeing =~ item1 + item2 + item3 + item4 + item5
+'
+
+# Fit model with FIML for missing data
+fit <- cfa(cfa_model, 
+           data = data_cfa, 
+           std.lv = TRUE,
+           missing = "fiml")  # Full Information Maximum Likelihood
+
+summary(fit, standardized = TRUE, fit.measures = TRUE)
+```
+
+#### Option B: Mplus
+
+```default
+TITLE: CFA with Missing Data
+
+DATA: FILE IS cfa_data.dat;
+
+VARIABLE: 
+    NAMES ARE item1 item2 item3 item4 item5;
+    USEVARIABLES ARE item1-item5;
+    MISSING ARE ALL (-999);  ! Or your missing value code
+
+ANALYSIS:
+    ESTIMATOR = ML;
+
+MODEL:
+    Wellbeing BY item1* item2 item3 item4 item5;
+    Wellbeing@1;
+
+OUTPUT: STANDARDIZED;
+```
+
+**Deliverable**: 
+
+1. Report your model syntax
+2. Report fit indices (χ², df, p-value, CFI, TLI, RMSEA)
+3. Report unstandardized and standardized factor loadings
+
+### Part 4: Compare to True Values (30 points)
+
+Create a comparison table and answer the reflection questions.
+
+**Comparison Table:**
+
+| Item | True λ | Estimated λ | Difference | % Bias |
+|------|--------|-------------|------------|--------|
+| item1 | ? | ? | ? | ? |
+| item2 | ? | ? | ? | ? |
+| item3 | ? | ? | ? | ? |
+| item4 | ? | ? | ? | ? |
+| item5 | ? | ? | ? | ? |
+
+*Note: % Bias = ((Estimated - True) / True) × 100*
+
+**Reflection Questions:**
+
+1. How close were your estimated factor loadings to the true values? 
+2. Did the model under- or over-estimate the loadings? Is there a pattern?
+3. How might the missing data in the Treatment group have affected your estimates?
+4. What would you expect to happen if you increased the missing data rate to 40%?
+5. Why is simulation useful for understanding statistical methods?
+
+## Extra Credit (10 points)
+
+Choose **one** of the following:
+
+1. Run the CFA in **both** Mplus and lavaan and compare the results
+2. Run the analysis on the **complete data** (before introducing missing values) and compare to your results with missing data
+3. Try a different missing data mechanism (e.g., MAR - missing at random, where missingness depends on age or another variable) and discuss how it affects estimates
+
+## Submission
+
+Submit the following:
+
+1. Your R script or Quarto document with all code
+2. Your Mplus input and output files (if using Mplus)
+3. A brief report (1-2 pages) with:
+   - Your true parameter values
+   - Missing data summary
+   - Model results
+   - Comparison table
+   - Answers to reflection questions
+
+## Grading Rubric
+
+| Component | Points |
+|-----------|--------|
+| Data simulation with correct structure | 20 |
+| Missing data correctly introduced | 20 |
+| CFA model correctly specified and run | 30 |
+| Comparison table and reflection | 30 |
+| **Total** | **100** |
+| Extra credit | +10 |

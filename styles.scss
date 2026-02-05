@@ -1,0 +1,218 @@
+/*-- scss:defaults --*/
+
+// University of Miami colors
+$um-green: #005030;
+$um-orange: #F47321;
+
+// Override Bootstrap variables
+$primary: $um-green;
+$secondary: $um-orange;
+$link-color: $um-green;
+
+/*-- scss:rules --*/
+
+// Navbar styling
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+// Headings
+h1, h2, h3, h4, h5, h6 {
+  color: $um-green;
+  font-weight: 600;
+}
+
+h1 {
+  border-bottom: 3px solid $um-orange;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  border-bottom: 2px solid lighten($um-green, 60%);
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+}
+
+// Links
+a {
+  color: $um-green;
+  text-decoration: none;
+  
+  &:hover {
+    color: $um-orange;
+    text-decoration: underline;
+  }
+}
+
+// Code blocks
+pre {
+  border-radius: 8px;
+  border-left: 4px solid $um-orange;
+}
+
+code {
+  color: $um-green;
+  background-color: #f0f5f3;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+
+pre code {
+  color: inherit;
+  background-color: transparent;
+  padding: 0;
+}
+
+// Tables
+table {
+  width: 100%;
+  margin: 1.5rem 0;
+  
+  th {
+    background-color: $um-green;
+    color: white;
+    padding: 0.75rem;
+  }
+  
+  td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  tr:hover {
+    background-color: #f8f9fa;
+  }
+}
+
+// Callout boxes
+.callout {
+  border-radius: 8px;
+  
+  &.callout-note {
+    border-left-color: $um-green;
+  }
+  
+  &.callout-warning {
+    border-left-color: $um-orange;
+  }
+  
+  &.callout-tip {
+    border-left-color: $um-green;
+    background-color: rgba($um-green, 0.05);
+  }
+}
+
+// Buttons
+.btn {
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-decoration: none !important;
+  
+  &.btn-primary {
+    background-color: $um-green;
+    border-color: $um-green;
+    color: white !important;
+    
+    &:hover {
+      background-color: darken($um-green, 10%);
+      border-color: darken($um-green, 10%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+  }
+  
+  &.btn-secondary {
+    background-color: $um-orange;
+    border-color: $um-orange;
+    color: white !important;
+    
+    &:hover {
+      background-color: darken($um-orange, 10%);
+      border-color: darken($um-orange, 10%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+  }
+  
+  &.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+  }
+}
+
+// Materials section styling
+.callout.callout-tip h2,
+.callout.callout-warning h2 {
+  border-bottom: none;
+  margin-top: 0;
+  padding-bottom: 0;
+}
+
+// Cards for content sections
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+  }
+}
+
+// Page title styling
+.title {
+  color: $um-green;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: $um-orange;
+  font-weight: 500;
+}
+
+// Author and date metadata
+.quarto-title-meta {
+  color: #6c757d;
+  font-size: 0.95rem;
+  
+  .quarto-title-meta-heading {
+    color: $um-green;
+    font-weight: 600;
+  }
+}
+
+// TOC styling
+#TOC {
+  border-left: 3px solid $um-green;
+  padding-left: 1rem;
+  
+  a {
+    color: #495057;
+    
+    &:hover, &.active {
+      color: $um-orange;
+    }
+  }
+}
+
+// Footer
+.page-footer {
+  margin-top: 3rem;
+  padding: 1.5rem;
+}
+
+// Responsive improvements
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.4rem;
+  }
+}

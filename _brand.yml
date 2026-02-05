@@ -1,0 +1,49 @@
+meta:
+  name: EPH 752 Advanced Research Methods
+  
+color:
+  palette:
+    # University of Miami colors
+    um-orange: "#F47321"
+    um-green: "#005030"
+    # Neutrals
+    dark: "#1a1a2e"
+    light: "#f8f9fa"
+    white: "#ffffff"
+    gray: "#6c757d"
+    
+  foreground: dark
+  background: white
+  primary: um-green
+  secondary: um-orange
+  success: "#28a745"
+  info: "#17a2b8"
+  warning: um-orange
+  danger: "#dc3545"
+  
+  link: um-green
+
+typography:
+  fonts:
+    - family: Source Sans Pro
+      source: google
+    - family: Fira Code
+      source: google
+      
+  base:
+    family: Source Sans Pro
+    size: 1rem
+    line-height: 1.6
+    
+  headings:
+    family: Source Sans Pro
+    weight: 600
+    color: um-green
+    
+  monospace:
+    family: Fira Code
+    size: 0.9em
+
+defaults:
+  html:
+    code-background: true

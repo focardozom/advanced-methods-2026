@@ -1,0 +1,130 @@
+---
+title: "Software Tools"
+subtitle: "Software Integration for Data Analysis"
+author: "Francisco Cardozo, PhD"
+date: today
+---
+
+## Overview
+
+In this class, we will focus on becoming *multilingual* in data science. We will learn how to seamlessly move data between different statistical software environments (R, SPSS, SAS, Mplus, and Excel). We will also compare outputs from the same statistical model (CFA) run in both Mplus and R's [lavaan](https://lavaan.ugent.be/) package. Finally, we will discuss the use of AI tools in statistical programming and data analysis.
+
+## Required Packages
+
+Please install the following R packages before class:
+```{r}
+#| echo: true
+#| eval: false
+
+# Install all required packages
+install.packages(c(
+    "tidyverse",      # Data manipulation and visualization
+    "haven",          # Import/export SPSS, SAS, Stata files
+    "writexl",        # Export to Excel
+    "arrow",          # Parquet files for big data
+    "lavaan",         # Structural equation modeling in R
+    "MplusAutomation" # Interface between R and Mplus
+))
+```
+
+| Package | Description | Documentation |
+|---------|-------------|---------------|
+| [tidyverse](https://www.tidyverse.org/) | Data wrangling and visualization | [tidyverse.org](https://www.tidyverse.org/) |
+| [haven](https://haven.tidyverse.org/) | Import/export SPSS, SAS, Stata | [haven.tidyverse.org](https://haven.tidyverse.org/) |
+| [writexl](https://docs.ropensci.org/writexl/) | Export data to Excel (.xlsx) | [docs.ropensci.org/writexl](https://docs.ropensci.org/writexl/) |
+| [arrow](https://arrow.apache.org/docs/r/) | Parquet files & big data | [arrow.apache.org/docs/r](https://arrow.apache.org/docs/r/) |
+| [lavaan](https://lavaan.ugent.be/) | Structural equation modeling | [lavaan.ugent.be](https://lavaan.ugent.be/) |
+| [MplusAutomation](https://michaelhallquist.github.io/MplusAutomation/) | Run Mplus from R | [MplusAutomation docs](https://michaelhallquist.github.io/MplusAutomation/) |
+
+::: {.callout-note}
+**Note**: To use `MplusAutomation`, you must have [Mplus](https://www.statmodel.com/) installed on your computer.
+:::
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Simulate scale data (e.g., Likert scale) with known parameters
+2. Export data from R to multiple software formats
+3. Run a confirmatory factor analysis (CFA) in Mplus
+4. Run the equivalent CFA in R using lavaan
+5. Compare and interpret outputs from different software
+6. Use AI tools effectively for coding
+
+## Topics
+
+### Part I: The Multilingual Analyst
+
+-   **Data Simulation**: Creating psychological scale data with Likert responses (5 items) and known factor loadings
+-   **Data Interoperability**: Transforming data across formats:
+    -   R $\leftrightarrow$ Excel/CSV
+    -   R $\leftrightarrow$ SPSS (`.sav`)
+    -   R $\leftrightarrow$ SAS (`.sas7bdat`)
+    -   R $\leftrightarrow$ Parquet (`.parquet`)
+    -   R $\leftrightarrow$ Mplus (`.dat`, `.inp`)
+
+### Part II: Comparing Mplus and lavaan
+
+-   **Mplus CFA**: Writing input files, running models, and extracting results with [`MplusAutomation`](https://michaelhallquist.github.io/MplusAutomation/)
+-   **[lavaan](https://lavaan.ugent.be/) CFA**: Specifying and fitting models in R
+-   **Output Comparison**: Understanding differences in syntax, defaults, and output formats
+-   **Parameter Recovery**: Verifying that both programs recover the true simulation parameters
+
+### Part III: AI-Assisted Analysis
+
+-   **AI Capabilities**: Code generation, debugging, translation, and learning
+-   **AI Limitations**: Domain expertise, verification, and reproducibility concerns
+-   **Best Practices**: Verification, understanding, documentation, and iteration
+-   **Ethics**: Transparency, data privacy, and  disclosure
+
+## Materials
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-tip appearance="simple" icon=false}
+## Slides
+
+Access the class presentation slides:
+
+[View Class Slides](slides.qmd){.btn .btn-primary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-warning appearance="simple" icon=false}
+## Assignment
+
+Complete the CFA with Missing Data assignment:
+
+[View Assignment](assignment.qmd){.btn .btn-secondary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+:::
+
+### Assignment Overview
+
+In the assignment, you will:
+
+1. Simulate your own psychological scale data with known factor loadings
+2. Introduce missing data for one group (MCAR)
+3. Fit a CFA model using Mplus or lavaan
+4. Compare your estimated parameters to the true values
+
+## Readings
+
+### Required
+-   Hallquist, M. N., & Wiley, J. F. (2018). [MplusAutomation: An R package for facilitating large-scale latent variable analyses in Mplus](https://doi.org/10.1080/10705511.2017.1402334). *Structural Equation Modeling, 25*(4), 621–638.
+
+### Supplemental
+-   Rosseel, Y. (2012). [lavaan: An R package for structural equation modeling](https://doi.org/10.18637/jss.v048.i02). *Journal of Statistical Software, 48*(2), 1–36.
+-   Wickham, H., & Grolemund, G. (2016). [*R for Data Science*](https://r4ds.hadley.nz/). O'Reilly Media. (Chapter on Data Import/Tidy Data).
+
+::: {.callout-tip}
+## Join the Open Source Community!
+
+Learning to code is about more than syntax—it's about joining a global community. Discover R user groups, conferences, and ways to get involved.
+
+[Explore Communities](community.qmd){.btn .btn-primary role="button"}
+:::

@@ -1,0 +1,44 @@
+---
+title: "EPH 752 Advanced Research Methods"
+subtitle: "University of Miami | Spring 2026"
+---
+
+Hi! I have included links and instructions to my sessions below. Please feel free to reach out to me if you have any questions.
+
+## Course Modules
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+### Sessions I
+
+- [**Software Tools**](software/index.qmd)
+  <br>*Data interoperability, R-Mplus integration, AI-assisted analysis*
+
+- [**Missing Data**](missing/index.qmd)
+  <br>*MCAR, MAR, MNAR, multiple imputation, FIML*
+
+- [**Monte Carlo Simulation**](montecarlo/index.qmd)
+  <br>*Power analysis, parameter recovery, simulation studies*
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### Sessions II
+
+- [**Multilevel Models**](multilevel/index.qmd)
+  <br>*Random effects models, nested data structures*
+
+- [**Dyadic Data Analysis**](dyadic/index.qmd)
+  <br>*Actor-Partner Interdependence Model, distinguishable dyads*
+
+- [**Causal Inference**](causal/index.qmd)
+  <br>*Observational studies, propensity scores, difference in differences*
+:::
+
+:::
+
+## Contact
+
+**Instructor**: [Francisco Cardozo](https://focardozom.github.io)
+
+[GitHub](https://github.com/focardozom)

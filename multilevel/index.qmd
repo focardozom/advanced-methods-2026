@@ -1,0 +1,26 @@
+---
+title: "Multilevel Models"
+subtitle: "Multilevel Analysis and Group-Randomized Trials"
+date: "2026-03-20"
+---
+
+**Date:** Mar 20
+
+## Topics
+-   Intraclass Correlation
+-   Design Effect
+-   Cluster-randomized and non-randomized designs
+-   Sandwich estimation
+
+## Homework
+**Assignment #7:** Conduct multilevel analysis. Due next week.
+
+## Readings
+
+### Required
+-   Enders, C. K., & Tofighi, D. (2007). Centering predictor variables in cross-sectional multilevel models: A new look at an old issue. *Psychological Methods, 12*(2), 121– 138. https://doi.org/10.1037/1082-989X.12.2.121
+-   Raudenbush, S. W., Martinez, A., & Spybrook, J. (2007). Strategies for improving precision in group-randomized experiments. *Educational Evaluation and Policy Analysis, 29*(1), 5-29.
+
+### Supplemental
+-   Geiser, C. (2013). *Data Analysis with Mplus*. Methodology in the Social Sciences, The Gildor Press. New York: NY [Chapter 5]
+-   Murray, D. M., Varnell, S. P., & Blitstein, J. L. (2004). Design and analysis of group-randomized trials: a review of recent methodological developments. *American Journal of Public Health, 94*(3), 423-432.

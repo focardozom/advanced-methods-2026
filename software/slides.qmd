@@ -1,0 +1,420 @@
+---
+title: "Software Integration"
+subtitle: "Becoming Multilingual in Data Science"
+author: "Francisco Cardozo, PhD"
+format:
+  revealjs:
+    theme: simple
+    logo: "../images/umlogo.png"
+    footer: "EPH 752 Advanced Research Methods"
+    slide-number: true
+    show-slide-number: all
+    link-external-newwindow: true
+editor_options:
+  chunk_output_type: console
+---
+
+## Agenda
+
+1.  **The *Multilingual* Analyst**: Why data interoperability matters.
+2.  **The Rosetta Stone**: Moving data between R, SPSS, SAS, and Mplus.
+3.  **Comparing Mplus and R Outputs**: Understanding different outputs from the same model.
+4.  **AI-Assisted Analysis**: Using AI tools responsibly and effectively.
+
+## Why be *Multilingual*?
+
+-   Collaborators use different tools (SPSS, SAS, Stata, Mplus).
+-   Some methods are implemented better (or only) in specific software.
+-   **Flexibility**: Don't get stuck because of a file format.
+-   **Reproducibility**: Scripting data transformation reduces manual errors.
+- Cost of software licenses.
+
+## 1. Simulating Data in R
+
+Instead of relying on external datasets, we will create our own. This allows us to know the **true** parameters.
+
+```{r}
+#| echo: true
+library(tidyverse)
+
+set.seed(2026)
+n <- 500
+
+# Simulate responses to a 5-item psychological scale (e.g., Anxiety)
+# Underlying latent trait (theta) drives all item responses
+
+data_sim <- tibble(
+    id = 1:n,
+    age = sample(18:65, n, replace = TRUE),
+    group = sample(c("Male", "Female"), n, replace = TRUE),
+    # Latent trait: true anxiety level (unobserved in real life)
+    theta = rnorm(n, mean = 0, sd = 1)
+) %>%
+    mutate(
+        # Generate 5 Likert items (1-5 scale) based on latent trait
+        # Each item has a loading (<U+03BB>) and unique error
+        item1 = round(pmin(5, pmax(1, 3 + 0.8 * theta + rnorm(n, 0, 0.5)))),
+        item2 = round(pmin(5, pmax(1, 3 + 0.7 * theta + rnorm(n, 0, 0.6)))),
+        item3 = round(pmin(5, pmax(1, 3 + 0.9 * theta + rnorm(n, 0, 0.4)))),
+        item4 = round(pmin(5, pmax(1, 3 + 0.6 * theta + rnorm(n, 0, 0.7)))),
+        item5 = round(pmin(5, pmax(1, 3 + 0.75 * theta + rnorm(n, 0, 0.55))))
+    )
+```
+
+## 2. Exporting to Excel/CSV
+
+The universal exchange format.
+
+```{r}
+#| echo: true
+#| eval: false
+
+# CSV (Comma Separated Values) - Good for interoperability
+write_csv(data_sim, "data_sim.csv")
+
+# Excel - Best for human viewing
+library(writexl)
+write_xlsx(data_sim, "data_sim.xlsx")
+```
+
+## 3. R $\leftrightarrow$ SPSS
+
+Using the `haven` package to handle `.sav` files with metadata (labels).
+
+```{r}
+#| echo: true
+#| eval: false
+library(haven)
+
+# Add variable labels (SPSS loves labels)
+data_spss <- data_sim %>%
+    mutate(
+        group = as.factor(group) # SPSS handles factors as labelled integers
+    )
+
+attr(data_spss$group, "label") <- "Gender"
+
+# Write to SPSS
+write_sav(data_spss, "data_sim.sav")
+
+# Read back
+data_from_spss <- read_sav("data_sim.sav")
+```
+
+## 4. R $\leftrightarrow$ SAS
+
+SAS `.sas7bdat` files are common in clinical trials and public health.
+
+```{r}
+#| echo: true
+#| eval: false
+library(haven)
+
+# Write to SAS
+write_sas(data_sim, "data_sim.sas7bdat")
+
+# Read from SAS
+data_from_sas <- read_sas("data_sim.sas7bdat")
+```
+
+## 5. R $\leftrightarrow$ Parquet
+
+Parquet is a modern, efficient columnar format—great for big data and cross-language workflows (R, Python, Spark).
+
+```{r}
+#| echo: true
+#| eval: false
+library(arrow)
+
+# Write to Parquet - fast and compressed
+write_parquet(data_sim, "data_sim.parquet")
+
+# Read from Parquet
+data_from_parquet <- read_parquet("data_sim.parquet")
+
+# Parquet preserves data types and is much faster than CSV for large files
+```
+
+**Why Parquet?**
+
+- **Speed**: 10-100x faster than CSV for large datasets
+- **Size**: Efficient compression (often 50-90% smaller)
+- **Cross-platform**: Works with Python, Spark, and cloud tools
+
+## 6. R $\leftrightarrow$ Mplus
+
+`MplusAutomation` is the bridge. It handles the  formatting Mplus requires (no headers, specific missing values).
+
+```{r}
+#| echo: true
+#| eval: false
+library(MplusAutomation)
+
+# Prepare data for Mplus
+# This converts factors to numbers, handles missing values,
+# and creates the .dat and .inp template
+prepareMplusData(
+    data_sim,
+    filename = "data_sim.dat",
+    inpfile = TRUE
+)
+```
+
+## Challenge
+
+1. Import a dataset you have in your computer to R. 
+2. Export it to another software format. 
+
+# Part II
+
+## Comparing Mplus and R Outputs
+
+**Goal**: Fit the same CFA model in both Mplus and lavaan, then compare results.
+
+**True parameters** (from simulation):
+
+- Factor loadings: λ₁=0.8, λ₂=0.7, λ₃=0.9, λ₄=0.6, λ₅=0.75
+
+## Step 1: Export Data for Mplus
+
+```{r}
+#| echo: true
+#| eval: false
+library(MplusAutomation)
+
+# Select only the items for CFA
+data_cfa <- data_sim %>%
+    select(item1, item2, item3, item4, item5)
+
+# Export to Mplus format
+prepareMplusData(
+    data_cfa,
+    filename = "cfa_data.dat",
+    inpfile = FALSE
+)
+```
+
+## Step 2: Mplus Input File
+
+Your input file for Mplus should look like this:
+
+```default
+TITLE: CFA with 5 items - Anxiety Scale
+
+DATA: FILE IS cfa_data.dat;
+
+VARIABLE: 
+    NAMES ARE item1 item2 item3 item4 item5;
+    USEVARIABLES ARE item1-item5;
+
+ANALYSIS:
+    ESTIMATOR = ML;
+
+MODEL:
+    Anxiety BY item1* item2 item3 item4 item5;
+    Anxiety@1;  ! Fix factor variance to 1
+
+OUTPUT: STANDARDIZED MODINDICES;
+```
+
+## Step 3: Run Mplus from R
+
+```{r}
+#| echo: true
+#| eval: false
+library(MplusAutomation)
+
+# Run the Mplus model
+runModels("cfa_model.inp")
+
+# Read the results back into R
+mplus_results <- readModels("cfa_model.out")
+
+# View parameter estimates
+mplus_results$parameters$unstandardized
+```
+
+## Step 4: CFA in lavaan
+
+```{r}
+#| echo: true
+#| eval: false
+library(lavaan)
+
+# Define the model syntax (similar to Mplus)
+cfa_model <- "
+    Anxiety =~ item1 + item2 + item3 + item4 + item5
+"
+
+# Fit the model
+fit_lavaan <- cfa(cfa_model,
+    data = data_cfa,
+    std.lv = TRUE
+) # Fix factor variance to 1
+
+# View results
+summary(fit_lavaan, standardized = TRUE, fit.measures = TRUE)
+```
+
+## Step 5: Extract lavaan Parameters
+
+```{r}
+#| echo: true
+#| eval: false
+# Get parameter estimates
+parameterEstimates(fit_lavaan)
+
+# Get standardized estimates
+standardizedSolution(fit_lavaan)
+
+# Get fit indices
+fitMeasures(fit_lavaan, c("chisq", "df", "pvalue", "cfi", "tli", "rmsea"))
+```
+
+## Comparing Results
+
+| Parameter | True Value | Mplus | lavaan |
+|-----------|------------|-------|--------|
+| λ₁ (item1) | 0.80 | ? | ? |
+| λ₂ (item2) | 0.70 | ? | ? |
+| λ₃ (item3) | 0.90 | ? | ? |
+| λ₄ (item4) | 0.60 | ? | ? |
+| λ₅ (item5) | 0.75 | ? | ? |
+
+**Question**: Do both programs recover the true parameters?
+
+## Differences to Note
+
+| Aspect | Mplus | lavaan |
+|--------|-------|--------|
+| Default estimator | MLR (robust) | ML |
+| First loading | Fixed to 1 | Fixed to 1 |
+| Output | Separate .out file | R console |
+| Syntax | `BY` | `=~` |
+
+## Challenge
+
+1. Do the same CFA but use the items as categorical variables.
+
+# Part III
+
+## AI-Assisted Data Analysis
+
+AI tools (ChatGPT, Claude, GitHub Copilot, Cursor) are changing how we write code and conduct analyses.
+
+How do we use AI effectively?
+
+## What AI Can Help With
+
+- **Code generation**: Writing R, Mplus, or Python syntax
+- **Debugging**: Finding errors in your code
+- **Translation**: Converting code between languages (R → Python, SPSS → R)
+- **Documentation**: Explaining what code does
+- **Learning**: Understanding new statistical concepts
+
+## What AI Struggles With
+
+- **Domain expertise**: Understanding your specific research context
+- **Data interpretation**: Making substantive conclusions
+- **Cutting-edge methods**: Very recent techniques not in training data
+- **Verification**: AI can confidently produce incorrect code
+- **Reproducibility**: Same prompt may yield different results
+
+## Best Practices for AI in Analysis
+
+1. **Always verify output** - Run the code, check the results
+2. **Understand before using** - Don't use code you can't explain
+3. **Start specific** - Detailed prompts yield better results
+4. **Iterate** - Refine your prompts based on output
+## Example: Good vs. Bad Prompts
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Bad prompt:**
+
+> "Write CFA code"
+
+:::
+
+::: {.column width="50%"}
+**Good prompt:**
+
+> "Write lavaan code for a one-factor CFA with 5 items (item1-item5), fix factor variance to 1, and request standardized estimates and fit indices"
+
+:::
+
+::::
+
+## Example: Using AI to Translate Code
+
+**Prompt:**
+
+> "Convert this Mplus syntax to lavaan:
+> 
+> MODEL:
+>     Anxiety BY item1* item2 item3 item4 item5;
+>     Anxiety@1;"
+
+**AI Output:**
+
+```r
+model <- '
+    Anxiety =~ item1 + item2 + item3 + item4 + item5
+'
+fit <- cfa(model, data = mydata, std.lv = TRUE)
+```
+
+## Example: Using AI for Debugging
+
+**Prompt:**
+
+> "I'm getting this error in lavaan: 
+> Error: lavaan ERROR: sample covariance matrix is not positive-definite.
+> 
+> My data has 5 Likert items. What could be causing this?"
+
+AI can suggest: checking for missing data, constant variables, multicollinearity, or small sample size.
+
+## AI Ethics in Research
+
+- **Verification**: You are responsible for accuracy, not the AI
+- **Data privacy**: Don't share sensitive data with AI tools
+
+## AI Tools for Data Analysis
+
+| Tool | Best For | Cost |
+|------|----------|------|
+| ChatGPT | General coding, explanations | Free / $20 mo |
+| Claude | Longer code, nuanced tasks | Free / $20 mo |
+| GitHub Copilot | IDE integration, autocomplete | $10 mo (free for students) |
+| Cursor | Full IDE with AI | Free / $20 mo |
+
+## Hands-On: AI-Assisted Coding
+
+Try this exercise:
+
+1. Ask an AI to write code that simulates data for a 2-factor CFA
+2. Run the code in R
+3. Does it work? What needed fixing?
+4. Ask the AI to add missing data to the simulation
+
+**Reflect**: What was helpful? What required your expertise?
+
+## Summary
+
+- AI is a **tool**, not a replacement for statistical knowledge
+- **Verify everything** - AI makes confident mistakes
+- Use AI to **accelerate** your work, not to bypass learning
+- Your **expertise** is needed for interpretation and context
+
+## Key Takeaways
+
+1. **Be multilingual**: R is your hub for connecting software
+2. **Simulation**: Know the truth to evaluate your methods
+3. **Compare outputs**: Different software, same results (mostly)
+4. **Use AI wisely**: Powerful tool with important limitations
+
+## Questions?
+
+

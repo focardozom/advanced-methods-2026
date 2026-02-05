@@ -1,0 +1,39 @@
+---
+title: "Causal Inference"
+subtitle: "Experimental and Quasi-experimental Designs"
+date: "2026-04-10"
+---
+
+**Date:** Apr 10
+
+## Overview
+
+Inferring causality from observational data requires rigorous design and statistical adjustment. This module covers the fundamental frameworks for causal inference, focusing on methods to handle selection bias and leverage natural experiments.
+
+## Topics
+-   **Observational Studies**: Conceptual, Design, and Analysis stages.
+-   **Propensity Score Methods**:
+    -   Estimating Propensity Scores
+    -   Inverse Probability Weighting (IPW)
+    -   Checking Balance and Common Support
+-   **Difference in Differences (DiD)**:
+    -   Parallel Trends Assumption
+    -   Estimating Treatment Effects over Time
+    -   Real-world application (Policy evaluation)
+
+## Slides
+
+[View Class Slides](slides.qmd)
+
+## Homework
+**Assignment #10:** Conduct analysis to be determined in Mplus. Due next week.
+
+## Readings
+
+### Required
+-   Shadish WR. Campbell and Rubin: A primer and comparison of their approaches to causal inference in field settings. *Psychol Methods*. 2010 Mar;15(1):3-17. doi: 10.1037/a0015916. PMID: 20230099.
+-   Rubin. (2007). The design versus the analysis of observational studies for causal effects: parallels with the design of randomized trials. *Statistics in Medicine, 26*(1), 20–
+
+### Examples from Class
+-   **IPW**: Effect of alcohol on marijuana initiation (YRBS data).
+-   **DiD**: Effect of marijuana legalization in California vs. Florida.

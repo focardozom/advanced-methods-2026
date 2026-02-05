@@ -1,0 +1,198 @@
+---
+title: "Causal Inference"
+subtitle: "Experimental and Quasi-experimental Designs"
+author: "Francisco Cardozo"
+format:
+  revealjs:
+    theme: simple
+    logo: "../images/umlogo.svg"
+    footer: "EPH 752 Advanced Research Methods"
+    slide-number: true
+    show-slide-number: all
+    chalkboard: true
+    link-external-newwindow: true
+editor_options:
+  chunk_output_type: console
+---
+
+## 1. Observational Studies & Propensity Scores ⚖️
+
+Observational studies analyze relationships between variables without intervening in treatment assignment. 
+
+**Propensity Score**: A statistical tool to control for selection bias and obtain more precise treatment effect estimates.
+
+## Conceptual Stage
+
+-   Formulate the **causal question**.
+-   Use the **potential outcomes framework**.
+-   "As if" it were a randomized experiment.
+
+## Design Stage
+
+-   Reconstruct/approximate a randomized experiment design.
+-   Goal: **Independence** between treatment assignment and covariates.
+-   Techniques: Matching, Stratification, Weighting (IPW).
+-   **Balance Diagnosis**: Verify covariates are balanced between groups.
+
+## Statistical Analysis Stage
+
+-   Compare results between treatment and control groups.
+-   Use appropriate statistical models (regression, etc.).
+-   Adjust for propensity scores to handle selection bias.
+
+## Example: Alcohol & Marijuana Use
+
+> **Research Question:** What is the effect of alcohol consumption on marijuana use initiation?
+
+Data: Selected from YRBS (Youth Risk Behavior Survey).
+
+-   **Treatment**: Alcohol use (0/1)
+-   **Outcome**: Marijuana use (0/1)
+-   **Confounders**: Age, Sex, Other drug use (Cigarettes, Cocaine, Heroin, etc.)
+
+## Hypothetical Scenarios
+
+1.  **No Design**: Use all available data (Naive estimate).
+2.  **Exclusion**: Remove outliers (e.g., polydrug users).
+3.  **Stratified**: Randomize within blocks (e.g., by gender).
+4.  **Propensity Score/IPW**: Reconstruct a randomized experiment using weighting.
+5.  **Control for baseline**: Intervene on non-users.
+
+## Scenario 1: Naive Estimate
+
+```{r}
+#| echo: true
+#| eval: false
+
+glm(marijuana ~ alcohol, data = data_2019, family = "binomial") %>%
+    tidy(exp = T, conf.int = T)
+```
+
+*Problem*: Ignores all confounding variables.
+
+## Scenario 4: Inverse Probability Weighting (IPW)
+
+**Step 1: Estimate Propensity Score**
+
+Model the probability of receiving treatment (alcohol) given covariates.
+
+```{r}
+#| echo: true
+#| eval: false
+
+# Recipe including all confounders
+formula_ps <- recipe(
+    alcohol ~ age + sex + q30 + q50 + q51 + q52 + q53 + q54 + q55 + q56 + q57,
+    data = data_2019
+)
+
+# Logistic regression
+logistic <- logistic_reg() %>% set_engine("glm")
+```
+
+## Step 2: Check Common Support
+
+Ensure there is overlap in the probability of treatment between groups.
+
+```{r}
+#| echo: true
+#| eval: false
+
+# Histogram of propensity scores by group
+to_ipw %>%
+    ggplot(aes(.pred_Yes, fill = alcohol)) +
+    geom_histogram(position = position_dodge(), binwidth = 0.05)
+```
+
+## Step 3: Calculate Weights
+
+$$w = \frac{T}{e(X)} + \frac{1-T}{1-e(X)}$$
+
+```{r}
+#| echo: true
+#| eval: false
+data_ipw <- to_ipw |>
+    mutate(
+        ipw = case_when(
+            alcohol == "Yes" ~ 1 / .pred_Yes,
+            alcohol == "No" ~ 1 / (1 - .pred_Yes)
+        ),
+        ipw = importance_weights(ipw)
+    )
+```
+
+## Step 4: Check Balance
+
+Verify that after weighting, the groups look similar on covariates.
+
+```{r}
+#| echo: true
+#| eval: false
+# Run diagnostics on weighted data
+# ...
+```
+
+## Step 5: Estimate Causal Effect
+
+Run the outcome model weighted by the IPW.
+
+```{r}
+#| echo: true
+#| eval: false
+
+fit(causal_effect_wflow, data = finaldata) |>
+    tidy(exp = TRUE, conf.int = TRUE)
+```
+
+## 2. Difference in Differences (DiD) 🔀
+
+-   Evaluates average change after an intervention implementation.
+-   Estimates the **counterfactual** based on a comparison group trend.
+-   **Parallel Trends Assumption**: Without intervention, the treatment and control groups would have followed parallel paths.
+
+## Example: Marijuana Legalization
+
+> **Question:** What is the effect of marijuana legalization (California, 2016-2018) on adolescent marijuana use?
+
+-   **Treatment Group**: California (CA)
+-   **Control Group**: Florida (FL)
+-   **Pre-Period**: 2017 (Early implementation)
+-   **Post-Period**: 2019 (Full sales)
+
+## DiD Visualization
+
+```{r}
+#| echo: true
+#| eval: false
+
+diff_diff %>%
+    ggplot(aes(x = year, y = nmarijuana, color = state, group = state)) +
+    geom_smooth(method = "glm", se = F) +
+    labs(y = "Marijuana Prevalence", x = "Year")
+```
+
+## Estimating DiD
+
+Model:
+$$Y = \beta_0 + \beta_1 \text{Treatment} + \beta_2 \text{Time} + \beta_3 (\text{Treatment} \times \text{Time}) + \epsilon$$
+
+$\beta_3$ is the **Difference-in-Differences estimator**.
+
+```{r}
+#| echo: true
+#| eval: false
+
+formula_did <- recipe(
+    marijuana ~ year + treatment + interaction,
+    data = diff_diff2
+)
+
+fit(did_wflow, data = diff_diff2) |>
+    tidy(conf.int = TRUE, exp = T)
+```
+
+## Summary 🥳
+
+-   **Observational Studies**: Require careful design to mimic experiments.
+-   **Propensity Scores**: Help balance groups (Matching, IPW).
+-   **Difference in Differences**: Controls for time-invariant unobserved confounders by comparing trends.

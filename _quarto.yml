@@ -1,0 +1,43 @@
+project:
+  type: website
+  output-dir: _site
+
+brand: _brand.yml
+
+website:
+  title: "EPH 752 Advanced Research Methods"
+  favicon: images/umlogo.svg
+  navbar:
+    background: primary
+    foreground: light
+    left:
+      - href: index.qmd
+        text: Home
+      - href: software/index.qmd
+        text: Software
+      - href: missing/index.qmd
+        text: Missing Data
+      - href: montecarlo/index.qmd
+        text: Monte Carlo
+      - href: multilevel/index.qmd
+        text: Multilevel
+      - href: dyadic/index.qmd
+        text: Dyadic
+      - href: causal/index.qmd
+        text: Causal
+  page-footer:
+    background: primary
+    foreground: light
+    center: |
+      © 2026 Francisco Cardozo, PhD | University of Miami
+
+format:
+  html:
+    theme: 
+      - cosmo
+      - styles.scss
+    toc: true
+    toc-depth: 3
+    code-copy: true
+    code-overflow: wrap
+    highlight-style: github

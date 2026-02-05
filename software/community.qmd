@@ -1,0 +1,78 @@
+---
+title: "Open Source Communities"
+subtitle: "Get Involved in the R & Data Science Ecosystem"
+author: "Francisco Cardozo, PhD"
+date: today
+---
+
+## Why Join a Community?
+
+Learning to code is more than just syntax—it's about joining a global community of researchers, developers, and educators who share knowledge openly. These communities offer:
+
+- **Learning opportunities**: Workshops, tutorials, and mentorship
+- **Networking**: Connect with researchers and professionals worldwide
+- **Support**: Get help when you're stuck on a problem
+- **Contribution**: Give back by helping others and improving tools
+
+## R & Data Science Communities
+
+| Community | Focus | Link |
+|-----------|-------|------|
+| [rOpenSci](https://ropensci.org/) | Scientific R packages & peer review | [ropensci.org](https://ropensci.org/) |
+| [R/Medicine](https://r-medicine.org/) | R in healthcare & medical research | [r-medicine.org](https://r-medicine.org/) |
+| [The Carpentries](https://carpentries.org/) | Teaching foundational coding skills | [carpentries.org](https://carpentries.org/) |
+| [R-Ladies](https://rladies.org/) | Promoting gender diversity in R | [rladies.org](https://rladies.org/) |
+| [Posit Community](https://forum.posit.co/) | RStudio/Quarto user forums | [forum.posit.co](https://forum.posit.co/) |
+| [Latin-R](https://latin-r.com/) | R community in Latin America | [latin-r.com](https://latin-r.com/) |
+
+## Conferences & Events
+
+Attending conferences is a great way to learn about new methods, packages, and connect with the community.
+
+| Conference | Focus | Website |
+|------------|-------|---------|
+| [useR!](https://www.r-project.org/conferences/) | The official R conference | [r-project.org](https://www.r-project.org/conferences/) |
+| [posit::conf](https://posit.co/conference/) | RStudio/Posit annual conference | [posit.co/conference](https://posit.co/conference/) |
+| [R/Medicine](https://r-medicine.org/) | R in medical research | [r-medicine.org](https://r-medicine.org/) |
+| [Latin-R](https://latin-r.com/) | R in Latin America | [latin-r.com](https://latin-r.com/) |
+
+## Ways to Get Involved
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+### Start Small
+
+- **Follow `#rstats`** on social media (Mastodon, Twitter/X, LinkedIn)
+- **Join a forum** like Posit Community or Stack Overflow
+- **Attend a local meetup** — many cities have R user groups
+- **Watch recordings** from past conferences (many are free on YouTube)
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### Level Up
+
+- **Report bugs** when you find them in packages
+- **Write documentation** or improve existing docs
+- **Create tutorials** or blog posts about what you've learned
+- **Become an instructor** with The Carpentries
+- **Review packages** for rOpenSci
+:::
+
+:::
+
+## Resources for Learning
+
+| Resource | Description | Link |
+|----------|-------------|------|
+| [R for Data Science](https://r4ds.hadley.nz/) | Free online book | [r4ds.hadley.nz](https://r4ds.hadley.nz/) |
+| [Big Book of R](https://www.bigbookofr.com/) | Curated list of R books | [bigbookofr.com](https://www.bigbookofr.com/) |
+| [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) | Weekly data visualization challenge | [GitHub](https://github.com/rfordatascience/tidytuesday) |
+| [R Weekly](https://rweekly.org/) | Weekly newsletter of R news | [rweekly.org](https://rweekly.org/) |
+| [R-bloggers](https://www.r-bloggers.com/) | Aggregated R blog posts | [r-bloggers.com](https://www.r-bloggers.com/) |
+
+::: {.callout-tip}
+## Start Today!
+
+Pick one community from this list and join it this week. Even just lurking and reading discussions will help you learn and feel connected to the broader data science world.
+:::

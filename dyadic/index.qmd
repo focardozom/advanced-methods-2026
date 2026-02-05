@@ -1,0 +1,35 @@
+---
+title: "Dyadic Data Analysis"
+date: "2026-03-27"
+---
+
+**Date:** Mar 27
+
+## Overview
+
+Analysis of dyadic data focuses on the interdependence between two individuals (e.g., couples, friends, siblings). We will explore methods to handle this non-independence and model the relationships between dyad members.
+
+## Topics
+-   Distinguishable vs. Indistinguishable Dyads
+-   Dyadic Variability (Between vs. Within)
+-   Non-independence and Interclass Correlation (ICC)
+-   Multilevel Modeling for Dyads
+-   Actor-Partner Interdependence Model (APIM)
+-   Structural Equation Modeling (SEM) approach
+
+## Slides
+
+[View Class Slides](slides.qmd)
+
+## Homework
+**Assignment #8:** Conduct dyadic data analysis in Mplus. Due next week.
+
+## Readings
+
+### Required
+-   Kenny, David & Kashy, Deborah & Cook, William & Simpson, Jeffry. (2006). *Dyadic Data Analysis*. [Pages 25-32 and Chapter 5]
+
+### Additional Resources
+-   [David Kenny's Dyadic Data Website](http://www.davidakenny.net/dyad.htm)
+-   [Shiny APIM App](https://davidakenny.shinyapps.io/APIM_MM/)
+-   [Quantitude Podcast: The Actor-Partner Interdependence Model](https://quantitudepod.org/s3e13-the-actor-partner-interdependence-model/)
