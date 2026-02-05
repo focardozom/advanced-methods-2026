@@ -3,7 +3,7 @@ title: "EPH 752 Advanced Research Methods"
 subtitle: "University of Miami | Spring 2026"
 ---
 
-Hi! I have included links and instructions to my sessions below. Please feel free to reach out to me if you have any questions.
+Hi! I have included links and instructions for my sessions below (Francisco). Please feel free to reach out if you have any questions.
 
 ## Course Modules
 
@@ -39,6 +39,7 @@ Hi! I have included links and instructions to my sessions below. Please feel fre
 
 ## Contact
 
-**Instructor**: [Francisco Cardozo](https://focardozom.github.io)
+**Instructors**: [Francisco Cardozo](https://focardozom.github.io) & Eric C. Brown. 
+**TA**: [Olu]()
 
 [GitHub](https://github.com/focardozom)
