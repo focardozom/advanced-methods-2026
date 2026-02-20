@@ -1,0 +1,292 @@
+---
+title: "Assignment: Identifying Missing Data Mechanisms"
+subtitle: "Missing Data"
+author: "Francisco Cardozo, PhD"
+date: today
+---
+
+## Overview
+
+This assignment has two goals. First, you will practice reasoning about why data are missing by classifying missingness mechanisms from written scenarios and R code. Second, you will handle missing data in practice by fitting a CFA model with FIML or in Mplus using a simulated dataset.
+
+## Learning Objectives
+
+- Distinguish between MCAR, MAR, and MNAR using both narrative descriptions and formal notation.
+- Read R data-generation code and identify the implied missingness mechanism.
+- Fit a CFA model using FIML (lavaan) or ML (Mplus) on data with missing values and interpret the results.
+
+## Instructions
+
+### Part 1: Scenario Classification (30 points)
+
+Read each scenario carefully. For every scenario:
+
+1. **Classify** the missingness mechanism as MCAR, MAR, or MNAR
+2. **Justify** your answer in 2--3 sentences, referencing which variables (observed or unobserved) determine the probability of being missing
+3. **Consequence**: State whether complete-case analysis would produce biased estimates and, if so, in which direction
+
+---
+
+**Scenario A -- Lab Equipment Failure**
+
+A research team measures cortisol levels in 500 participants. Midway through data collection the freezer storing blood samples malfunctions overnight, destroying 60 samples. The destroyed samples correspond to whichever tubes happened to be in the broken unit; the assignment of tubes to freezers was arbitrary and unrelated to any participant characteristic.
+
+---
+
+**Scenario B -- Income on a Health Survey**
+
+A public-health survey asks respondents to report their annual household income. Researchers notice that 25% of income values are missing. Closer inspection reveals that respondents who reported higher education levels and who live in wealthier zip codes are *more* likely to provide their income. Missingness does not depend on the actual income value once education and zip code are accounted for.
+
+---
+
+**Scenario C -- Depression Symptom Diary**
+
+Participants in a longitudinal study are asked to complete a daily mood diary. Researchers find that entries are most likely to be missing on days when participants' depression scores (the outcome of interest) would have been highest. In other words, the sicker someone feels on a given day, the less likely they are to fill out the diary that day.
+
+---
+
+**Scenario D -- Online Experiment Dropout**
+
+Participants in an online experiment are randomly assigned to a 10-minute or 30-minute condition. The 30-minute condition has a 40% dropout rate compared to 10% in the short condition. Dropout is predicted by condition assignment (fully observed) and does not depend on participants' scores on the outcome measure once condition is accounted for.
+
+---
+
+### Part 2: R Code Detective (30 points)
+
+Below are four R code snippets that simulate a dataset about **employee salary** and then introduce missingness in the `salary` variable. The complete data have three variables: `department` (HR or Engineering), `experience` (years), and `salary` (annual, in thousands).
+
+For each snippet:
+
+1. **Identify** the missingness mechanism (MCAR, MAR, or MNAR)
+2. **Cite the line(s)** of code that reveal the mechanism
+3. **Direction of bias**: If you computed `mean(salary, na.rm = TRUE)` on the corrupted data, would it over-estimate, under-estimate, or be approximately unbiased relative to the true mean? Explain briefly.
+
+The complete data are generated as follows (same for all four snippets):
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidyverse)
+
+set.seed(752)
+n <- 800
+
+complete <- tibble(
+    id = 1:n,
+    department = rep(c("HR", "Engineering"), each = n / 2),
+    experience = round(runif(n, 1, 30)),
+    salary = round(case_when(
+        department == "HR" ~ 45 + 0.8 * experience + rnorm(n, 0, 5),
+        department == "Engineering" ~ 60 + 1.2 * experience + rnorm(n, 0, 7)
+    ), 1)
+)
+```
+
+---
+
+**Snippet 1**
+
+```{r}
+#| echo: true
+#| eval: false
+data_1 <- complete |>
+    mutate(
+        salary = ifelse(runif(n()) < 0.25, NA, salary)
+    )
+```
+
+---
+
+**Snippet 2**
+
+```{r}
+#| echo: true
+#| eval: false
+data_2 <- complete |>
+    mutate(
+        p_miss = ifelse(department == "Engineering", 0.40, 0.05),
+        salary = ifelse(runif(n()) < p_miss, NA, salary)
+    ) |>
+    select(-p_miss)
+```
+
+---
+
+**Snippet 3**
+
+```{r}
+#| echo: true
+#| eval: false
+data_3 <- complete |>
+    mutate(
+        p_miss = plogis(-4.0 + 0.05 * salary),
+        salary = ifelse(runif(n()) < p_miss, NA, salary)
+    ) |>
+    select(-p_miss)
+```
+
+---
+
+**Snippet 4**
+
+```{r}
+#| echo: true
+#| eval: false
+data_4 <- complete |>
+    mutate(
+        p_miss = case_when(
+            experience > 20 ~ 0.50,
+            experience > 10 ~ 0.20,
+            TRUE ~ 0.05
+        ),
+        salary = ifelse(runif(n()) < p_miss, NA, salary)
+    ) |>
+    select(-p_miss)
+```
+
+---
+
+### Part 3: CFA with Missing Data Using FIML (40 points)
+
+In this part you will work with a simulated dataset that already contains missing values. Your task is to fit a confirmatory factor analysis (CFA), compare FIML to listwise deletion, and interpret the results.
+
+#### The Study
+
+A research team developed a **6-item self-esteem scale**. They surveyed 500 college students. The items are rated on a continuous scale (standardized). Unfortunately, some students skipped later items---especially those who scored lower on the first two items (a survey-fatigue pattern). The missingness mechanism is **MAR**: it depends on the observed early items, not on the missing items themselves.
+
+#### Step 1: Generate the Data
+
+Run the code below to create the dataset you will analyze. **Use your student ID as the seed.**
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidyverse)
+library(lavaan)
+
+set.seed(YOUR_STUDENT_ID)
+
+pop_model <- "
+  esteem =~ 0.85*item1 + 0.75*item2 + 0.70*item3 +
+             0.65*item4 + 0.60*item5 + 0.55*item6
+  esteem ~~ 1*esteem
+"
+
+complete_data <- simulateData(pop_model, sample.nobs = 500)
+
+esteem_data <- complete_data |>
+    as_tibble() |>
+    mutate(
+        item4 = ifelse(rbinom(n(), 1, plogis(-2.5 + 0.6 * item1)) == 1, NA, item4),
+        item5 = ifelse(rbinom(n(), 1, plogis(-1.8 + 0.6 * item1 + 0.4 * item2)) == 1, NA, item5),
+        item6 = ifelse(rbinom(n(), 1, plogis(-1.2 + 0.7 * item1 + 0.3 * item2)) == 1, NA, item6)
+    )
+```
+
+#### Step 2: Inspect the Missing Data (5 points)
+
+Report the number and percentage of missing values for each item. You can use:
+
+```{r}
+#| echo: true
+#| eval: false
+esteem_data |>
+    summarise(across(everything(), ~ sum(is.na(.x)))) |>
+    pivot_longer(everything(), names_to = "Item", values_to = "N_Missing") |>
+    mutate(Pct = round(N_Missing / nrow(esteem_data) * 100, 1))
+```
+
+#### Step 3: Fit the CFA Model (20 points)
+
+Fit a one-factor CFA with all 6 items. Run **two versions**: one with listwise deletion and one with FIML.
+
+You may use **either lavaan or Mplus** (or both for extra credit).
+
+##### Option A: lavaan
+
+```{r}
+#| echo: true
+#| eval: false
+cfa_model <- "
+  esteem =~ item1 + item2 + item3 + item4 + item5 + item6
+"
+
+fit_listwise <- cfa(cfa_model, data = esteem_data, missing = "listwise")
+fit_fiml <- cfa(cfa_model, data = esteem_data, missing = "fiml")
+
+summary(fit_listwise, standardized = TRUE, fit.measures = TRUE)
+summary(fit_fiml, standardized = TRUE, fit.measures = TRUE)
+```
+
+##### Option B: Mplus
+
+```default
+TITLE: Self-Esteem CFA - FIML;
+
+DATA: FILE IS esteem_data.dat;
+
+VARIABLE:
+    NAMES ARE item1 item2 item3 item4 item5 item6;
+    USEVARIABLES ARE item1-item6;
+    MISSING ARE ALL (-999);
+
+ANALYSIS:
+    ESTIMATOR = ML;
+
+MODEL:
+    esteem BY item1* item2 item3 item4 item5 item6;
+    esteem@1;
+
+OUTPUT: STANDARDIZED;
+```
+
+If you use Mplus, run the model once as shown above (FIML is the default with `ESTIMATOR = ML`) and once using `LISTWISE = ON;` under `DATA:` to compare.
+
+**Deliverables:**
+
+1. Report your model syntax
+2. Report fit indices for both models (chi-square, df, p-value, CFI, TLI, RMSEA)
+3. Report standardized factor loadings for both models
+
+#### Step 4: Compare and Reflect (15 points)
+
+Create a comparison table and answer the questions below.
+
+**Comparison table:**
+
+| Item | True Loading | Listwise Loading | FIML Loading |
+|------|-------------|-----------------|-------------|
+| item1 | 0.85 | ? | ? |
+| item2 | 0.75 | ? | ? |
+| item3 | 0.70 | ? | ? |
+| item4 | 0.65 | ? | ? |
+| item5 | 0.60 | ? | ? |
+| item6 | 0.55 | ? | ? |
+
+**Reflection questions:**
+
+1. Which method (listwise or FIML) produced loadings closer to the true values? For which items is the difference most noticeable?
+2. How many cases did listwise deletion discard? How many did FIML use?
+3. The missingness in this dataset depends on `item1` and `item2`. Why does this make FIML particularly effective here?
+4. If the missingness had depended on the missing items themselves (e.g., students with low self-esteem skipped the items *because* they would have scored low), would FIML still produce unbiased estimates? Why or why not?
+
+## Submission
+
+Submit the following:
+
+1. A Quarto document (`.qmd`) or PDF containing:
+   - Part 1: Classification, justification, and consequence for all four scenarios
+   - Part 2: Mechanism identification, code citations, and bias direction for all four snippets
+   - Part 3: Missing data summary, model output, comparison table, and reflection answers
+2. Your R script or Mplus input/output files
+
+## Grading Rubric
+
+| Component | Points |
+|-----------|--------|
+| Part 1: Scenario classification (4 scenarios, 7--8 pts each) | 30 |
+| Part 2: R code detective (4 snippets, 7--8 pts each) | 30 |
+| Part 3: CFA with FIML — missing data summary | 5 |
+| Part 3: CFA with FIML — model fitting (listwise + FIML) | 20 |
+| Part 3: CFA with FIML — comparison table and reflection | 15 |
+| **Total** | **100** |

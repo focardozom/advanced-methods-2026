@@ -1,0 +1,1628 @@
+---
+title: "Missing Data"
+subtitle: "MCAR, MAR, and MNAR"
+author: "Francisco Cardozo, PhD"
+brand: false
+engine: knitr
+filters:
+  - webr
+webr:
+  packages:
+    - dplyr
+format:
+  revealjs:
+    theme: [simple, slides-styles.scss]
+    logo: "../images/umlogo.png"
+    footer: "EPH 752 Advanced Research Methods"
+    slide-number: true
+    show-slide-number: all
+    link-external-newwindow: true
+    code-overflow: wrap
+    scrollable: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+#| include: false
+
+# --- Setup: generate all datasets ---
+library(tidyverse)
+
+set.seed(2026)
+n <- 1000
+
+complete_data <- tibble(
+    id = 1:n,
+    sex = rep(c("Male", "Female"), each = n / 2),
+    height = round(
+        c(
+            rnorm(n / 2, mean = 175, sd = 7),
+            rnorm(n / 2, mean = 162, sd = 6)
+        ),
+        1
+    )
+) |>
+    mutate(
+        p_complete = plogis(
+            -0.11 * (height - 170)
+        ),
+        profile_status = ifelse(
+            rbinom(n(), 1, p_complete) == 1,
+            "Incomplete",
+            "Complete"
+        )
+    ) |>
+    select(-p_complete)
+
+# Door A
+set.seed(101)
+data_a <- complete_data |>
+    mutate(height = ifelse(runif(n()) < 0.40, NA, height))
+
+# Door B
+set.seed(102)
+data_b <- complete_data |>
+    mutate(
+        p_miss = ifelse(profile_status == "Incomplete", 0.70, 0.05),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    ) |>
+    select(-p_miss)
+
+# Door C
+set.seed(103)
+data_c <- complete_data |>
+    mutate(
+        p_miss = case_when(
+            sex == "Female" ~ 0.10,
+            height < 170 ~ 0.60,
+            height > 180 ~ 0.10,
+            TRUE ~ 0.10 + (180 - height) / (180 - 170) * 0.50
+        ),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    ) |>
+    select(-p_miss)
+
+# Door D: the complete data (no corruption)
+data_d <- complete_data
+```
+
+```{webr-r}
+#| context: setup
+
+# --- webR setup: same data generation for interactive browser chunks ---
+library(dplyr)
+
+set.seed(2026)
+n <- 1000
+
+complete_data <- data.frame(
+    id = 1:n,
+    sex = rep(c("Male", "Female"), each = n / 2),
+    height = round(
+        c(
+            rnorm(n / 2, mean = 175, sd = 7),
+            rnorm(n / 2, mean = 162, sd = 6)
+        ),
+        1
+    )
+) |>
+    mutate(
+        p_complete = plogis(
+            -0.11 * (height - 170)
+        ),
+        profile_status = ifelse(
+            rbinom(n(), 1, p_complete) == 1,
+            "Incomplete",
+            "Complete"
+        )
+    ) |>
+    select(-p_complete)
+
+set.seed(101)
+data_a <- complete_data |>
+    mutate(height = ifelse(runif(n()) < 0.40, NA, height))
+
+set.seed(102)
+data_b <- complete_data |>
+    mutate(
+        p_miss = ifelse(profile_status == "Incomplete", 0.70, 0.05),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    ) |>
+    select(-p_miss)
+
+set.seed(103)
+data_c <- complete_data |>
+    mutate(
+        p_miss = case_when(
+            sex == "Female" ~ 0.10,
+            height < 170 ~ 0.60,
+            height > 180 ~ 0.10,
+            TRUE ~ 0.10 + (180 - height) / (180 - 170) * 0.50
+        ),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    ) |>
+    select(-p_miss)
+
+data_d <- complete_data
+```
+
+## Welcome, Players
+
+:::: columns
+::: {.column width="50%"}
+You are **data analysts** at a dating app. Your company collected data on **1,000 users** — height, sex, and whether they completed their full profile.
+
+But something went wrong. The data was incomplete, and now **four different versions** exist. Only one is the original.
+
+**Your goal**: pick a door, analyze the data behind it, and figure out if your data has the truth.
+
+:::
+
+::: {.column width="50%"}
+![](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNjcydndpdHZrcHNudnJ2bDhlMm1zOGM2Ym1wYzloY3gzNmNqc2tqeSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/2mzPaYFmVGBITEZUNW/giphy.gif)
+:::
+::::
+
+# Round 1: Pick a Door  
+
+## The Four Doors
+
+:::: columns
+::: {.column width="50%"}
+![](https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cWd0cDVjbjdvbmRwMGMzejcwMjl5Ym1pb2N3bmw5OXg3MjAwa3oxZyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/AXzzeV66BR4p2Z3XYf/giphy.gif):::
+:::
+
+::: {.column width="50%"}
+Behind each door is a version of your dating app data with the same 1,000 users. Three were corrupted by a **different unknown force**. One was left untouched.
+
+**You must choose one door. That's your dataset.**
+
+One door has no missing values at all, you know the truth, so please don't tell us your data is complete.
+
+:::
+::::
+
+## Choose Your Door
+
+Run this code to randomly select your door:
+
+```{webr-r}
+# Pick your door!
+my_door <- sample(c("A", "B", "C", "D"), 1)
+cat("You opened Door", my_door, "\n")
+
+my_data <- switch(my_door,
+    "A" = data_a,
+    "B" = data_b,
+    "C" = data_c,
+    "D" = data_d
+)
+```
+
+Write down which door you got. Now let's see what's behind it.
+
+## Open Your Door
+
+Compute the group means from your dataset:
+
+```{webr-r}
+my_data |>
+    summarise(
+        n_complete = sum(!is.na(height)),
+        n_missing = sum(is.na(height)),
+        mean_height = round(mean(height, na.rm = TRUE), 1),
+        sd_height = round(sd(height, na.rm = TRUE), 1),
+        .by = sex
+    )
+```
+
+**Write down your results:**
+
+-   Male mean height = ?
+-   Female mean height = ?
+-   How many missing values do you have?
+
+We'll compare answers across the class in a moment.
+
+## Look around the zoom:
+
+-   **Did everyone get the same means?**
+-   **Did anyone have zero missing values? (don't tell)**
+
+> The force behind each door determined whether your results are trustworthy.
+
+## All Four Doors Opened 
+
+Let's see what was behind every door:
+
+```{r}
+#| echo: false
+get_summary <- function(data, name) {
+    data |>
+        group_by(sex) |>
+        summarise(
+            mean = round(mean(height, na.rm = TRUE), 1),
+            .groups = "drop"
+        ) |>
+        pivot_wider(names_from = sex, values_from = mean) |>
+        mutate(
+            Dataset = name,
+            Difference = round(Male - Female, 1),
+            .before = 1
+        )
+}
+
+puzzle <- bind_rows(
+    get_summary(data_a, "Door A"),
+    get_summary(data_b, "Door B"),
+    get_summary(data_c, "Door C"),
+    get_summary(data_d, "Door D")
+) |>
+    relocate(Difference, .after = Male)
+
+knitr::kable(
+    puzzle,
+    col.names = c("Door", "Female", "Male", "Difference (M <U+2212> F)")
+)
+```
+
+
+# Round 2: The Three Forces
+
+## Naming the Forces
+
+Rubin [-@rubin1976inference] identified three forces that make data disappear. Each one leaves a different trace and requires a different strategy.
+
+| Force (Full Name)                        | Missingness depends on...      |
+|------------------------------------------|-------------------------------|
+| **MCAR (Missing Completely At Random)**  | Nothing — purely random        |
+| **MAR (Missing At Random)**              | Observed variables only        |
+| **MNAR (Missing Not At Random)**         | The missing values themselves  |
+
+Learn to recognize each one, then we'll see which force hit your door.
+
+## Force 1: MCAR — The Random Storm
+
+:::: columns
+::: {.column width="50%"}
+**Definition**: The probability of being missing is **unrelated** to any variable  observed or unobserved.
+
+$$P(R = 1 \mid \text{Sex}, \text{Height}) = P(R = 1)$$
+
+> *In plain language*: This force strikes like lightning *completely at random*. It doesn't care who you are or what your height is.
+:::
+
+::: {.column width="50%"}
+**Where you'll encounter it**:
+
+-   A server crash deletes random records
+-   You don't ask for height to some users (randomly)
+-   People did not see the height question because it was behind a banner that appears randomly
+
+**Good news**: Complete-case analysis is **unbiased**; you lose statistical power.
+:::
+::::
+
+## Planned Missing Data Designs (MCAR by Design) {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Researchers sometimes intentionally introduce MCAR to reduce participant burden while preserving statistical power.
+
+**Three-form design** [@Graham_2006]:
+
+- All participants answer a common block (X)
+- Each participant is randomly assigned two of three additional blocks (A, B, C)
+- Every item pair appears together in at least one form
+
+| Form | Blocks |
+|------|--------|
+| 1    | X + A + B |
+| 2    | X + A + C |
+| 3    | X + B + C |
+
+:::
+
+::: {.column width="50%"}
+
+**Why do this?**
+
+-   Cuts survey length by ~33% per participant
+-   Reduces fatigue and careless responding
+-   Missingness is **MCAR by construction** (random assignment to forms)
+-   MI or FIML recovers full-data estimates with minimal efficiency loss
+
+**Other planned designs:**
+
+-   **Two-method measurement** - expensive gold-standard measure on a random subsample, cheap proxy for everyone
+-   **Wave-missing** - in longitudinal studies, skip a random subset of participants at certain waves
+
+
+:::
+::::
+
+## Force 2: MAR - The Hidden Trail
+
+:::: columns
+::: {.column width="50%"}
+**Definition**: The probability of being missing depends on **observed** data, but **not** on the missing value itself.
+
+$$P(R = 1 \mid Y_{\text{obs}}, Y_{\text{mis}}) = P(R = 1 \mid Y_{\text{obs}})$$
+
+> *In plain language*: This force follows a trail you *can* see. If you find the trail, you can undo the damage.
+:::
+
+::: {.column width="50%"}
+**Where you'll encounter it**:
+
+-   Users who skip their full profile also skip reporting height
+-   Newer users are less likely to fill in optional fields
+-   Users who never upload a photo also leave height blank
+
+**Key**: Complete-case analysis can be **biased**, but proper methods (MI, FIML) can correct it *if* you follow the right trail.
+:::
+::::
+
+## Force 3: MNAR - The Invisible Wall
+
+:::: columns
+::: {.column width="50%"}
+**Definition**: The probability of being missing depends on the **missing value itself**, even after controlling for observed data.
+
+$$P(R = 1 \mid \text{Sex}, \text{Height}) \newline \text{depends directly on height}$$
+
+> *In plain language*: This is the most dangerous force. The data hides *because* of what it contains. There is no visible trail to follow.
+:::
+
+::: {.column width="50%"}
+**Where you'll encounter it**:
+
+-   Shorter men don't report their height on dating apps
+-   High earners refuse to report income
+-   Sickest patients drop out of clinical trials
+
+**Warning**: **No standard method** can fully correct this bias. You'll need sensitivity analysis.
+:::
+::::
+
+## Your Map of the Forces {.smaller}
+
+| Feature                  | MCAR (Random Storm) | MAR (Hidden Trail)   | MNAR (Invisible Wall) |
+|--------------------------|---------------------|----------------------|-----------------------|
+| **Depends on**           | Nothing             | Observed variables   | The missing values    |
+| **Complete-case bias?**  | No                  | Yes                  | Yes                   |
+| **Fixable with MI/FIML?**| Yes (N/A)          | Yes                  | Not fully             |
+| **How common?**          | Rare                | Common               | Common                |
+| **Testable?**            | Partially           | Not definitively     | Not definitively      |
+
+
+::: {.callout-important}
+We can never fully verify whether data is MAR or MNAR from the observed data alone. The classification requires *substantive reasoning* about the data-generating process.
+:::
+
+Now, can you match each force to one of the doors?
+
+# Round 3: The Reveal
+
+## How It Works
+
+I'm going to show you the code used to generate each door's dataset.
+
+Your job: read the code and tell me what mechanism it is.
+
+-   Is missingness related to nothing? → *MCAR*
+-   Is missingness related to an observed variable? → *MAR*
+-   Is missingness related to the missing value itself? → *MNAR*
+
+## Door A: The Code {.smaller}
+
+```{r}
+#| echo: true
+#| eval: false
+
+data_a <- complete_data |>
+    mutate(
+        height = ifelse(runif(n()) < 0.40, NA, height)
+    )
+```
+
+**What do you see?**
+
+-   What determines whether height goes missing?
+-   Does it depend on sex? On height? On profile status?
+
+. . .
+
+> *MCAR — The Random Storm.* Every observation has the same 40% chance of being missing. It depends on nothing — pure random chance. The complete cases are a random subset of the data. You lose power, but the truth survives.
+
+## Door B: The Code {.smaller}
+
+First, how `profile_status` was generated:
+
+```{r}
+#| echo: true
+#| eval: false
+
+# Profile completion depends on height
+complete_data <- complete_data |>
+    mutate(
+        p_complete = plogis(
+            -0.11 * (height - 170)
+        ),
+        profile_status = ifelse(
+            rbinom(n(), 1, p_complete) == 1,
+            "Incomplete",
+            "Complete"
+        )
+    )
+```
+
+Then missingness in height depends on `profile_status`:
+
+```{r}
+#| echo: true
+#| eval: false
+
+data_b <- complete_data |>
+    mutate(
+        p_miss = ifelse(profile_status == "Incomplete", 0.70, 0.05),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    )
+```
+
+**What do you see?**
+
+-   `profile_status` depends on height; shorter users are less likely to complete their profile
+-   Missingness in height depends on `profile_status`; not on height directly
+
+. . .
+
+> *MAR - The Hidden Trail.* Missingness depends on an observed variable (`profile_status`). Since shorter users tend to have incomplete profiles (and thus more missing height), the naive group means are biased upward. If we control for `profile_status`, we can recover the truth.
+
+## Door B: Controlling for Profile Status
+
+Try it yourself — estimate the mean height by sex, **controlling for profile status**:
+
+```{webr-r}
+# Step 1: subgroup means (observed) weighted by total subgroup size
+data_b |>
+    summarise(
+        n_total = n(),
+        n_observed = sum(!is.na(height)),
+        mean_height = mean(height, na.rm = TRUE),
+        .by = c(sex, profile_status)
+    ) |>
+    summarise(
+        mean_height = round(weighted.mean(mean_height, w = n_total), 1),
+        .by = sex
+    )
+```
+
+We can also recover the marginal means using regression + `predict`:
+
+```{webr-r}
+# Fit regression controlling for profile_status
+mod <- lm(height ~ sex * profile_status, data = data_b)
+
+# Predicted marginal means by sex
+data_b |>
+    mutate(pred = predict(mod, newdata = data_b)) |>
+    summarise(
+        mean_height = round(mean(pred), 1),
+        .by = sex
+    )
+```
+
+## Door C: The Code {.smaller}
+
+```{r}
+#| echo: true
+#| eval: false
+
+data_c <- complete_data |>
+    mutate(
+        p_miss = case_when(
+            sex == "Female" ~ 0.10,
+            height < 170 ~ 0.60,
+            height > 180 ~ 0.10,
+            TRUE ~ 0.10 + (180 - height) / (180 - 170) * 0.50
+        ),
+        height = ifelse(runif(n()) < p_miss, NA, height)
+    )
+```
+
+**What do you see?**
+
+-   What determines whether height goes missing for males?
+-   Can you observe `height` if it's the variable that went missing?
+
+. . .
+
+> *MNAR - The Invisible Wall.* Among males, missingness depends on height itself; the variable that's missing. Shorter males have up to 60% chance of being missing. There's no observed trail to follow.
+
+No standard method can fully correct this.
+
+## Door D: The Code {.smaller}
+
+```{r}
+#| echo: true
+#| eval: false
+
+data_d <- complete_data
+```
+
+. . .
+
+> *No problem at all.* Door D is the complete, original data; no missing values, no mechanism.
+
+```{r}
+#| echo: false
+truth <- complete_data |>
+    group_by(sex) |>
+    summarise(m = round(mean(height), 1))
+```
+
+If you chose this door, you had the truth the whole time.
+
+> *Ground truth*: Male = `r truth$m[truth$sex == "Male"]`, Female = `r truth$m[truth$sex == "Female"]`
+
+## The Evidence Board {.smaller}
+
+Now let's compare all four doors against the truth:
+
+```{r}
+#| echo: false
+comparison <- bind_rows(
+    get_summary(data_d, "Door D (Truth)"),
+    get_summary(data_a, "Door A (MCAR)"),
+    get_summary(data_b, "Door B (MAR)"),
+    get_summary(data_c, "Door C (MNAR)")
+)
+
+knitr::kable(
+    comparison,
+    col.names = c("Door", "Difference", "Female", "Male")
+)
+```
+
+. . .
+
+> *Door A* (MCAR): close to the truth; random loss, no bias
+
+. . .
+
+> *Door B* (MAR): biased; but fixable if we control for `profile_status`
+
+. . .
+
+> *Door C* (MNAR): biased; and not fixable with standard methods
+
+## Visualizing the Damage {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 6
+bind_rows(
+    data_d |> mutate(dataset = "Door D (Truth)"),
+    data_a |> filter(!is.na(height)) |> mutate(dataset = "Door A (MCAR)"),
+    data_b |> filter(!is.na(height)) |> mutate(dataset = "Door B (MAR)"),
+    data_c |> filter(!is.na(height)) |> mutate(dataset = "Door C (MNAR)")
+) |>
+    mutate(
+        dataset = factor(
+            dataset,
+            levels = c(
+                "Door D (Truth)",
+                "Door A (MCAR)",
+                "Door B (MAR)",
+                "Door C (MNAR)"
+            )
+        )
+    ) |>
+    ggplot(aes(x = height, fill = sex)) +
+    geom_density(alpha = 0.5) +
+    facet_wrap(~dataset, nrow = 2) +
+    scale_fill_manual(values = c("Female" = "#F47321", "Male" = "#005030")) +
+    labs(x = "Height (cm)", y = "Density", fill = "Sex") +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "bottom")
+```
+
+## MAR: Why Is It Biased? {.smaller}
+
+`profile_status` depends on height. Shorter users are less likely to complete their profile:
+
+```{r}
+#| echo: true
+complete_data |>
+    summarise(
+        n = n(),
+        mean_height = round(mean(height), 1),
+        .by = c(sex, profile_status)
+    ) |>
+    knitr::kable()
+```
+
+. . .
+
+Shorter users → incomplete profile → more missing height → observed means are biased **upward**.
+
+## MAR: Following the Trail {.smaller}
+
+But within each profile-status group, missing and observed cases have **similar** mean heights:
+
+```{r}
+#| echo: true
+complete_data |>
+    mutate(status = ifelse(is.na(data_b$height), "Missing", "Observed")) |>
+    summarise(
+        n = n(),
+        mean_height = round(mean(height), 1),
+        .by = c(profile_status, status)
+    ) |>
+    knitr::kable()
+```
+
+. . .
+
+This is the signature of MAR. If we include `profile_status` as an **auxiliary variable** in MI/FIML, we recover unbiased estimates.
+
+## MNAR: Behind the Wall {.smaller}
+
+```{r}
+#| echo: true
+complete_data |>
+    mutate(status = ifelse(is.na(data_c$height), "Missing", "Observed")) |>
+    summarise(
+        n = n(),
+        mean_height = round(mean(height), 1),
+        .by = c(profile_status, status)
+    ) |>
+    knitr::kable()
+```
+
+. . .
+
+Among males, missing cases are shorter than observed cases. The data disappears *because of its own value*. No observed variable can explain this; the bias is not fixable with standard methods.
+
+## Mapping the Three Forces {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 4.5
+library(patchwork)
+
+p1 <- ggplot() +
+    geom_hline(yintercept = 0.30, color = "#F47321", linewidth = 2) +
+    annotate(
+        "text",
+        x = 175,
+        y = 0.38,
+        label = "P(Missing) = 0.30",
+        size = 4.5,
+        color = "#F47321",
+        fontface = "bold"
+    ) +
+    annotate(
+        "text",
+        x = 175,
+        y = 0.18,
+        label = "Same probability for everyone",
+        size = 3.5,
+        color = "#666666"
+    ) +
+    scale_x_continuous(limits = c(145, 200)) +
+    ylim(0, 1) +
+    labs(
+        title = "MCAR: The Random Storm",
+        x = "Height (cm)",
+        y = "P(Missing)"
+    ) +
+    theme_minimal(base_size = 11)
+
+p2 <- tibble(
+    profile = factor(
+        c("Incomplete", "Complete"),
+        levels = c("Incomplete", "Complete")
+    ),
+    p_miss = c(0.70, 0.05)
+) |>
+    ggplot(aes(x = profile, y = p_miss, fill = profile)) +
+    geom_col(width = 0.5) +
+    scale_fill_manual(
+        values = c("Incomplete" = "#F47321", "Complete" = "#005030")
+    ) +
+    geom_text(
+        aes(label = scales::percent(p_miss)),
+        vjust = -0.5,
+        size = 4,
+        fontface = "bold"
+    ) +
+    ylim(0, 1) +
+    labs(
+        title = "MAR: The Hidden Trail",
+        x = "Profile Status (observed)",
+        y = "P(Missing)"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "none")
+
+p3 <- tibble(height = seq(145, 200, 0.5)) |>
+    crossing(sex = c("Male", "Female")) |>
+    mutate(
+        p_miss = case_when(
+            sex == "Female" ~ 0.10,
+            height < 170 ~ 0.60,
+            height > 180 ~ 0.10,
+            TRUE ~ 0.10 + (180 - height) / (180 - 170) * 0.50
+        )
+    ) |>
+    ggplot(aes(x = height, y = p_miss, color = sex)) +
+    geom_line(linewidth = 2) +
+    scale_color_manual(values = c("Female" = "#F47321", "Male" = "#005030")) +
+    ylim(0, 1) +
+    labs(
+        title = "MNAR: The Invisible Wall",
+        x = "Height (cm) <U+2014> the missing variable",
+        y = "P(Missing)",
+        color = "Sex"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom")
+
+p1 + p2 + p3
+```
+
+## The Takeaway
+
+:::: columns
+::: {.column width="50%"}
+**If you ignore the forces:**
+
+-   Group means are biased
+-   Treatment effects are distorted
+-   Confidence intervals miss the truth
+-   p-values are unreliable
+-   Effect sizes are attenuated
+:::
+
+::: {.column width="50%"}
+**Real-world consequences:**
+
+-   Clinical trials underestimate side effects
+-   Surveys underrepresent vulnerable groups
+-   Longitudinal studies suffer from survivor bias
+-   Policy decisions rest on distorted evidence
+:::
+::::
+
+. . .
+
+> *The method for handling missing data should be informed by the mechanism that generated it.* Rubin
+
+## Apply to Your Own Research
+
+Consider your own research or a study you've recently read:
+
+1.  Which variables might have missing data?
+2.  What force (*MCAR*, *MAR*, *MNAR*) is most plausible? Why?
+3.  What would happen if you just deleted all incomplete cases?
+4.  What observed variables might predict the missingness?
+
+## Lessons Learned
+
+1.  **Missing data mechanisms matter**. They determine whether your results are biased
+2.  **MCAR** (the random storm) is the only safe scenario for complete-case analysis and it's the rarest
+3.  **MAR** (the hidden trail) can be addressed with proper methods if you follow the right auxiliary variables
+4.  **MNAR** (the invisible wall) is the hardest challenge requires substantive reasoning and sensitivity analysis
+5.  **Always ask why data is missing**, not just how much
+
+# Part II: The Toolkit
+
+## Equipping Yourself
+
+Now that you can name the forces, you need the right tools to deal with them.
+
+-   Complete-case analysis: Deleting incomplete cases
+-   Multiple Imputation (MI): Creating plausible completed datasets
+-   Full Information Maximum Likelihood (FIML): Using all available information
+-   Sensitivity analysis: What to do when you suspect MNAR
+
+```{r}
+#| echo: false
+#| include: false
+
+# --- Part II Setup: Multiple Imputation with MICE ---
+library(mice)
+
+set.seed(752)
+n_mi <- 250
+
+mi_complete <- tibble(
+    id = 1:n_mi,
+    age = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    female = rbinom(n_mi, 1, 0.55),
+    treatment = rbinom(n_mi, 1, 0.5),
+    baseline_severity = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    social_support = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    stress = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    outcome = round(
+        -0.5 * treatment - 0.3 * age + 0.4 * female +
+            0.5 * baseline_severity - 0.3 * social_support +
+            0.8 * stress + rnorm(n_mi, 0, 1), 2
+    )
+)
+
+# MAR missingness <U+2014> strong differential dropout to expose complete-case bias.
+# stress is an auxiliary variable: it affects outcome and drives dropout,
+# but is NOT included in the analysis model.
+# P(outcome missing) depends on stress AND treatment (both fully observed).
+# P(social_support missing) depends on age (observed).
+# Complete-case is biased because high-stress treated patients are dropped,
+# distorting the treatment-outcome relationship.
+# MI recovers because stress is in the imputation model.
+mi_data <- mi_complete |>
+    mutate(
+        p_miss_out = plogis(-0.5 + 1.5 * stress + 1.0 * treatment),
+        p_miss_ss = plogis(-0.5 + 1.2 * age),
+        outcome = ifelse(rbinom(n(), 1, p_miss_out) == 1, NA, outcome),
+        social_support = ifelse(rbinom(n(), 1, p_miss_ss) == 1, NA, social_support)
+    ) |>
+    select(-p_miss_out, -p_miss_ss)
+
+# Run MICE
+imp <- mice(
+    mi_data |> select(-id),
+    m = 5, maxit = 20,
+    seed = 752, print = FALSE
+)
+
+# True model (full data)
+true_model <- lm(
+    outcome ~ treatment + age + female +
+        baseline_severity + social_support,
+    data = mi_complete
+)
+
+# Complete-case analysis
+cc_model <- lm(
+    outcome ~ treatment + age + female +
+        baseline_severity + social_support,
+    data = mi_data
+)
+
+# MI: analyze & pool
+mi_fit <- with(
+    imp,
+    lm(outcome ~ treatment + age + female +
+        baseline_severity + social_support)
+)
+mi_pooled <- pool(mi_fit)
+```
+
+## Multiple Imputation: The Big Idea
+
+:::: columns
+::: {.column width="50%"}
+
+Instead of filling in one guess for each missing value, MI creates *m* plausible completed datasets.
+
+**Three steps:**
+
+1.  Impute: Generate *m* completed datasets
+2.  Analyze: Fit your model on each one
+3.  Pool: Combine with Rubin's Rules
+
+:::
+
+
+::: {.column width="50%"}
+
+Each imputed dataset is *slightly different*, reflecting our uncertainty about what the missing values could have been.
+
+**Pooled estimate:**
+
+$$\bar{Q} = \frac{1}{m} \sum_{i=1}^{m} \hat{Q}_i$$
+
+**Total variance:**
+
+$$T = \bar{U} + \left(1 + \frac{1}{m}\right) B$$
+
+Where $\bar{U}$ = within-imputation variance and $B$ = between-imputation variance.
+
+:::
+::::
+
+## MICE: Chained Equations {.smaller}
+
+**MICE** = **M**ultivariate **I**mputation by **C**hained **E**quations
+
+[MICE website](https://amices.org/mice/){target="_blank"}
+
+Each variable with missing data gets its own imputation model, using all other variables as predictors.
+
+:::: columns
+::: {.column width="50%"}
+
+**The algorithm:**
+
+1.  Fill in starting values (e.g., random draws from observed)
+2.  For each variable with missing data:
+    -   Regress it on all other variables (observed cases)
+    -   Draw imputed values from the predictive distribution
+3.  Repeat step 2 for many iterations (cycling)
+4.  Store the final imputed dataset
+5.  Repeat *m* times → *m* complete datasets
+
+:::
+
+::: {.column width="50%"}
+
+**Default methods in `mice`:**
+
+| Variable Type    | Method                    |
+|------------------|---------------------------|
+| Continuous       | Predictive mean matching  |
+| Binary (2 lev.)  | Logistic regression       |
+| Nominal (>2 lev.)| Multinomial logit         |
+| Ordinal          | Proportional odds         |
+
+:::
+::::
+
+## A Simulated Clinical Trial {.smaller}
+
+We simulate a randomized trial with 200 participants, two binary predictors, three continuous, and one auxiliary variable (`stress`):
+
+```{r}
+#| echo: true
+#| eval: false
+
+set.seed(752)
+n_mi <- 200
+
+mi_complete <- tibble(
+    id = 1:n_mi,
+    age = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    female = rbinom(n_mi, 1, 0.55),
+    treatment = rbinom(n_mi, 1, 0.5),
+    baseline_severity = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    social_support = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    stress = round(rnorm(n_mi, mean = 0, sd = 1), 2),
+    outcome = round(
+        -0.5 * treatment - 0.3 * age + 0.4 * female +
+            0.5 * baseline_severity - 0.3 * social_support +
+            0.8 * stress + rnorm(n_mi, 0, 1), 2
+    )
+)
+```
+
+`stress` is an **auxiliary variable**: it affects the outcome but will *not* be included in the analysis model. It will, however, drive missingness and be available to MICE.
+
+**True parameters** (analysis model): $\beta_{\text{trt}} = -0.5$, $\beta_{\text{age}} = -0.3$, $\beta_{\text{female}} = 0.4$, $\beta_{\text{severity}} = 0.5$, $\beta_{\text{support}} = -0.3$
+
+## Making Data Disappear (MAR) {.smaller}
+
+We corrupt the data with MAR missingness. The probability of being missing depends on observed variables:
+
+```{r}
+#| echo: true
+#| eval: false
+
+mi_data <- mi_complete |>
+    mutate(
+        # stress (auxiliary) + treatment drive outcome missingness
+        p_miss_out = plogis(-0.5 + 1.5 * stress + 1.0 * treatment),
+        # Higher age -> more likely to miss social support
+        p_miss_ss = plogis(-0.5 + 1.2 * age),
+        outcome = ifelse(rbinom(n(), 1, p_miss_out) == 1, NA, outcome),
+        social_support = ifelse(rbinom(n(), 1, p_miss_ss) == 1, NA, social_support)
+    ) |>
+    select(-p_miss_out, -p_miss_ss)
+```
+
+This is **MAR** because missingness depends only on **fully observed** variables — `stress` and `treatment` drive missingness in `outcome`, while `age` drives missingness in `social_support`. The key twist: `stress` affects the outcome ($\beta = 0.8$) but is **not in the analysis model**. Complete-case analysis is biased because dropping high-stress treated participants distorts the treatment–outcome relationship (collider bias: treatment $\rightarrow$ R $\leftarrow$ stress). MI recovers because `stress` is included in the imputation model as an auxiliary variable.
+
+## Inspect the Damage {.smaller}
+
+```{r}
+#| echo: true
+
+mi_data |>
+    summarise(across(everything(), ~ sum(is.na(.x)))) |>
+    pivot_longer(everything(), names_to = "Variable", values_to = "N_Missing") |>
+    mutate(Pct_Missing = round(N_Missing / nrow(mi_data) * 100, 1)) |>
+    filter(N_Missing > 0) |>
+    knitr::kable()
+```
+
+```{r}
+#| echo: true
+#| fig-width: 8
+#| fig-height: 3.5
+
+md.pattern(mi_data |> select(-id), rotate.names = TRUE)
+```
+
+Each row is a pattern (1 = observed, 0 = missing). The numbers show how many cases share each pattern.
+
+## Step 1: Run MICE {.smaller}
+
+```{r}
+#| echo: true
+#| eval: false
+
+library(mice)
+
+imp <- mice(
+    mi_data |> select(-id),
+    m = 5, # number of imputed datasets
+    maxit = 20, # iterations per imputation
+    seed = 752,
+    print = FALSE
+)
+```
+
+```{r}
+#| echo: true
+
+imp
+```
+
+`mice` automatically selects predictive mean matching (pmm) for numeric variables. All fully observed variables serve as predictors in each imputation model.
+
+## Step 2: Check Convergence {.smaller}
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 5
+
+plot(imp)
+```
+
+**What to look for**: The *m* colored streams should be freely intermixed with no systematic trend. If streams separate or drift upward/downward check the imputation model.
+
+## Step 3: Inspect Imputed Values {.smaller}
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 4
+
+densityplot(imp)
+```
+
+**Blue** = observed data distribution. **Red lines** = imputed distributions (one per imputation). The shapes should be plausible and similar to the observed data, but not necessarily identical.
+
+## Step 4: Analyze Each Imputed Dataset {.smaller}
+
+```{r}
+#| echo: true
+
+mi_fit <- with(
+    imp,
+    lm(outcome ~ treatment + age + female +
+        baseline_severity + social_support)
+)
+```
+
+This fits the same regression model on all `r imp$m` imputed datasets. Each produces slightly different estimates because the imputed values differ.
+
+## Step 5: Pool with Rubin's Rules {.smaller}
+
+```{r}
+#| echo: true
+
+mi_pooled <- pool(mi_fit)
+summary(mi_pooled, conf.int = TRUE) |>
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+    select(term, estimate, std.error, `2.5 %`, `97.5 %`, p.value) |>
+    knitr::kable()
+```
+
+The pooled standard errors incorporate both sampling variability (within) and imputation uncertainty (between).
+
+## Complete-Case vs. MI {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+mi_sum <- summary(mi_pooled, conf.int = TRUE)
+
+plot_data <- bind_rows(
+    tibble(
+        term = names(coef(true_model)),
+        estimate = coef(true_model),
+        conf.low = confint(true_model)[, 1],
+        conf.high = confint(true_model)[, 2],
+        Method = "Full Data (No Missing)"
+    ),
+    tibble(
+        term = names(coef(cc_model)),
+        estimate = coef(cc_model),
+        conf.low = confint(cc_model)[, 1],
+        conf.high = confint(cc_model)[, 2],
+        Method = "Complete-Case"
+    ),
+    tibble(
+        term = mi_sum$term,
+        estimate = mi_sum$estimate,
+        conf.low = mi_sum$`2.5 %`,
+        conf.high = mi_sum$`97.5 %`,
+        Method = "MI (m = 5)"
+    )
+) |>
+    filter(term != "(Intercept)") |>
+    mutate(
+        Method = factor(
+            Method,
+            levels = c("Full Data (No Missing)", "Complete-Case", "MI (m = 5)")
+        )
+    )
+
+dgp_values <- tibble(
+    term = c(
+        "treatment", "age", "female",
+        "baseline_severity", "social_support"
+    ),
+    dgp = c(-0.5, -0.3, 0.4, 0.5, -0.3)
+)
+
+ggplot(plot_data, aes(x = estimate, y = Method, color = Method)) +
+    geom_vline(
+        data = dgp_values,
+        aes(xintercept = dgp),
+        linetype = "dashed", alpha = 0.5
+    ) +
+    geom_point(size = 3) +
+    geom_errorbarh(
+        aes(xmin = conf.low, xmax = conf.high),
+        height = 0.25
+    ) +
+    facet_wrap(~term, scales = "free_x", nrow = 1) +
+    scale_color_manual(values = c(
+        "Full Data (No Missing)" = "#005030",
+        "Complete-Case" = "#F47321",
+        "MI (m = 5)" = "#003366"
+    )) +
+    labs(
+        x = "Estimate (95% CI)",
+        y = "",
+        color = "",
+        caption = "Dashed line = true DGP value"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold")
+    )
+```
+
+- **MI** recovers estimates close to the full-data truth
+- **MI standard errors** properly account for imputation uncertainty (between)
+- **Complete-case** discards all partially observed rows, losing efficiency
+
+## MI: Practical Guidelines
+
+:::: columns
+::: {.column width="50%"}
+
+**How many imputations (*m*)?**
+
+-   Old rule of thumb: *m* = 5
+-   Other recommendations: ***m* ≥ 20** [@White_2010]
+-   Depends on the fraction of missing information
+
+**Include auxiliary variables:**
+
+-   Variables that predict missingness
+-   Variables that correlate with the incomplete variable
+-   Even if they are not in your analysis model
+
+:::
+
+::: {.column width="50%"}
+
+**Always check:**
+
+-   **Convergence** - trace plots should show no trends
+-   **Plausibility** - imputed distributions should be reasonable
+-   **Sensitivity** - try different imputation models
+
+**Report in your paper:**
+
+-   Number of imputations (*m*)
+-   Imputation method (e.g., PMM, logistic)
+-   Variables included in the imputation model
+-   Software and version used
+
+:::
+::::
+
+::: {.callout-tip}
+## The Imputation Model Should Be at Least as General as the Analysis Model
+If your analysis includes interactions or nonlinear terms, include them in the imputation model too.
+:::
+
+## Other MI Packages in R {.smaller}
+
+Beyond `mice`, several R packages offer alternative approaches to multiple imputation:
+
+| Package | Approach | Best For | Link |
+|---------|----------|----------|------|
+| **mice** | Chained equations (FCS) | General-purpose, flexible variable-by-variable imputation | [CRAN](https://cran.r-project.org/package=mice) |
+| **Amelia** | Joint multivariate normal (EMB algorithm) | Large datasets, continuous/normal data, time-series cross-sectional | [CRAN](https://cran.r-project.org/package=Amelia) |
+| **jomo** | Joint modelling with random effects | Multilevel / clustered data, mixed variable types | [CRAN](https://cran.r-project.org/package=jomo) |
+| **missForest** | Random forest (single imputation) | Nonlinear relationships, mixed types, no distributional assumptions | [CRAN](https://cran.r-project.org/package=missForest) |
+| **miceadds** | Extensions to mice | Multilevel imputation, two-level models, plausible values | [CRAN](https://cran.r-project.org/package=miceadds) |
+| **mi** | Bayesian regression | Diagnostics-rich workflow, automatic transformations | [CRAN](https://cran.r-project.org/package=mi) |
+
+**How to choose?**
+
+- **Flat data, mixed types** $\rightarrow$ `mice` (chained equations, most flexible)
+- **Mostly continuous, large N** $\rightarrow$ `Amelia` (fast joint model, assumes MVN)
+- **Multilevel / clustered** $\rightarrow$ `jomo` or `miceadds` (proper random-effects imputation)
+- **Complex nonlinear patterns** $\rightarrow$ `missForest` (tree-based, but single imputation only)
+
+
+# FIML with lavaan
+
+```{r}
+#| echo: false
+#| include: false
+
+# --- FIML Setup ---
+library(lavaan)
+
+# True population model: 5-item anxiety scale
+# Residual variances set to 1 - lambda^2 so that standardized loadings = lambda
+pop_model <- "
+  anxiety =~ 0.80*item1 + 0.70*item2 + 0.60*item3 + 0.75*item4 + 0.65*item5
+  anxiety ~~ 1*anxiety
+  item1 ~~ 0.36*item1
+  item2 ~~ 0.51*item2
+  item3 ~~ 0.64*item3
+  item4 ~~ 0.4375*item4
+  item5 ~~ 0.5775*item5
+"
+
+set.seed(2026)
+fiml_complete <- simulateData(pop_model, sample.nobs = 2000)
+
+# Introduce MAR missingness: higher item1 <U+2192> more likely to skip later items
+set.seed(303)
+fiml_data <- fiml_complete |>
+    as_tibble() |>
+    mutate(
+        item3 = ifelse(
+            rbinom(n(), 1, plogis(-2.0 + 0.8 * item1)) == 1, NA, item3
+        ),
+        item4 = ifelse(
+            rbinom(n(), 1, plogis(-1.5 + 0.8 * item1)) == 1, NA, item4
+        ),
+        item5 = ifelse(
+            rbinom(n(), 1, plogis(-1.0 + 0.8 * item1)) == 1, NA, item5
+        )
+    )
+
+# CFA model
+cfa_model <- "
+  anxiety =~ item1 + item2 + item3 + item4 + item5
+"
+
+# Fit three versions
+fit_true <- cfa(cfa_model, data = fiml_complete)
+fit_lw <- cfa(cfa_model, data = fiml_data, missing = "listwise")
+fit_fiml <- cfa(cfa_model, data = fiml_data, missing = "fiml")
+```
+
+## Full Information Maximum Likelihood (FIML)
+
+:::: columns
+::: {.column width="50%"}
+
+**FIML** estimates model parameters by maximizing the likelihood using all available data, even from incomplete cases.
+
+Unlike MI, FIML does not fill in missing values. Instead, it computes the likelihood for each case based on whatever variables are observed for that case.
+
+:::
+
+::: {.column width="50%"}
+
+**Key properties:**
+
+-   Produces unbiased estimates under MAR
+-   Uses all observed information, no cases discarded
+-   Handled natively in lavaan or Mplus with a single argument
+-   No need to create or manage multiple datasets
+-   Equivalent to MI asymptotically (same results, different path)
+
+:::
+::::
+
+## A 5-Item Anxiety Scale {.smaller}
+
+We simulate a **one-factor CFA** with 5 items measuring latent anxiety:
+
+```{r}
+#| echo: true
+#| eval: false
+
+library(lavaan)
+
+pop_model <- "
+  anxiety =~ 0.80*item1 + 0.70*item2 + 0.60*item3 + 0.75*item4 + 0.65*item5
+  anxiety ~~ 1*anxiety
+  item1 ~~ 0.36*item1
+  item2 ~~ 0.51*item2
+  item3 ~~ 0.64*item3
+  item4 ~~ 0.4375*item4
+  item5 ~~ 0.5775*item5
+"
+
+set.seed(2026)
+fiml_complete <- simulateData(pop_model, sample.nobs = 2000)
+```
+
+True standardized loadings: $\lambda_1 = .80$, $\lambda_2 = .70$, $\lambda_3 = .60$, $\lambda_4 = .75$, $\lambda_5 = .65$
+
+```{r}
+#| echo: true
+
+head(fiml_complete) |>
+    mutate(across(everything(), ~ round(.x, 2))) |>
+    knitr::kable()
+```
+
+## Survey Fatigue Strikes (MAR) {.smaller}
+
+Participants who score higher on item 1 (more anxious) are more likely to skip later items, a realistic survey fatigue pattern:
+
+```{r}
+#| echo: true
+#| eval: false
+
+fiml_data <- fiml_complete |>
+    as_tibble() |>
+    mutate(
+        # Later items have progressively more missingness
+        item3 = ifelse(rbinom(n(), 1, plogis(-2.0 + 0.8 * item1)) == 1, NA, item3),
+        item4 = ifelse(rbinom(n(), 1, plogis(-1.5 + 0.8 * item1)) == 1, NA, item4),
+        item5 = ifelse(rbinom(n(), 1, plogis(-1.0 + 0.8 * item1)) == 1, NA, item5)
+    )
+```
+
+This is **MAR**: missingness depends on `item1` (always observed), not on the missing items themselves.
+
+```{r}
+#| echo: true
+
+fiml_data |>
+    summarise(across(everything(), ~ sum(is.na(.x)))) |>
+    pivot_longer(everything(), names_to = "Item", values_to = "N_Missing") |>
+    mutate(Pct = round(N_Missing / nrow(fiml_data) * 100, 1)) |>
+    filter(N_Missing > 0) |>
+    knitr::kable()
+```
+
+## The CFA Model in lavaan {.smaller}
+
+The model specification is identical for all three analyses. Only the `missing` argument changes:
+
+```{r}
+#| echo: true
+#| eval: false
+
+cfa_model <- "
+  anxiety =~ item1 + item2 + item3 + item4 + item5
+"
+
+# 1. Full data (truth <U+2014> no missing values)
+fit_true <- cfa(cfa_model, data = fiml_complete)
+
+# 2. Listwise deletion (default)
+fit_lw <- cfa(cfa_model, data = fiml_data, missing = "listwise")
+
+# 3. FIML <U+2014> just add one argument
+fit_fiml <- cfa(cfa_model, data = fiml_data, missing = "fiml")
+```
+
+::: {.callout-note}
+## That's It
+The **only** difference is `missing = "fiml"`. lavaan handles everything internally: no imputed datasets, no pooling, no extra steps.
+:::
+
+## Listwise vs FIML: Factor Loadings {.smaller}
+
+```{r}
+#| echo: false
+
+extract_std <- function(fit) {
+    standardizedSolution(fit) |>
+        filter(op == "=~") |>
+        select(rhs, est.std, se, ci.lower, ci.upper)
+}
+
+true_std <- extract_std(fit_true)
+lw_std <- extract_std(fit_lw)
+fiml_std <- extract_std(fit_fiml)
+
+loading_comparison <- tibble(
+    Item = true_std$rhs,
+    DGP = c(0.80, 0.70, 0.60, 0.75, 0.65),
+    `Full Data` = round(true_std$est.std, 3),
+    `Listwise` = round(lw_std$est.std, 3),
+    `FIML` = round(fiml_std$est.std, 3),
+    `LW (SE)` = round(lw_std$se, 3),
+    `FIML (SE)` = round(fiml_std$se, 3)
+)
+
+knitr::kable(loading_comparison, align = "lrrrrr")
+```
+
+```{r}
+#| echo: false
+
+n_true <- lavInspect(fit_true, "nobs")
+n_lw <- lavInspect(fit_lw, "nobs")
+n_fiml <- lavInspect(fit_fiml, "nobs")
+```
+
+| | Full Data | Listwise | FIML |
+|---|---|---|---|
+| **N used** | `r n_true` | `r n_lw` | `r n_fiml` |
+
+Listwise **discards** every case with any missing item. FIML uses **all `r n_fiml` cases**.
+
+## Listwise vs FIML: Visual Comparison {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+dgp_fiml <- tibble(
+    rhs = factor(paste0("item", 1:5), levels = paste0("item", 1:5)),
+    dgp = c(0.80, 0.70, 0.60, 0.75, 0.65)
+)
+
+plot_fiml_data <- bind_rows(
+    extract_std(fit_true) |> mutate(Method = "Full Data (No Missing)"),
+    extract_std(fit_lw) |> mutate(Method = "Listwise"),
+    extract_std(fit_fiml) |> mutate(Method = "FIML")
+) |>
+    mutate(
+        Method = factor(
+            Method,
+            levels = c("Full Data (No Missing)", "Listwise", "FIML")
+        ),
+        rhs = factor(rhs, levels = paste0("item", 1:5))
+    )
+
+ggplot(plot_fiml_data, aes(x = est.std, y = Method, color = Method)) +
+    geom_vline(
+        data = dgp_fiml,
+        aes(xintercept = dgp),
+        linetype = "dashed", alpha = 0.5
+    ) +
+    geom_point(size = 3) +
+    geom_errorbarh(
+        aes(xmin = ci.lower, xmax = ci.upper),
+        height = 0.25
+    ) +
+    facet_wrap(~rhs, scales = "free_x", nrow = 1) +
+    scale_color_manual(values = c(
+        "Full Data (No Missing)" = "#005030",
+        "Listwise" = "#F47321",
+        "FIML" = "#003366"
+    )) +
+    labs(
+        x = "Standardized Loading (95% CI)",
+        y = "",
+        color = "",
+        caption = "Dashed line = true population loading"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold")
+    )
+```
+
+-   **FIML** recovers loadings close to the truth — especially for items 3–5 where missingness was highest
+-   **Listwise** confidence intervals are wider (less efficient) due to reduced sample size
+
+## Model Fit: Listwise vs FIML {.smaller}
+
+```{r}
+#| echo: false
+
+fit_idx <- c("chisq", "df", "pvalue", "cfi", "tli", "rmsea", "srmr")
+
+fit_table <- tibble(
+    Index = c("<U+03C7><U+00B2>", "df", "p-value", "CFI", "TLI", "RMSEA", "SRMR"),
+    `Full Data` = round(fitmeasures(fit_true, fit_idx), 3),
+    Listwise = round(fitmeasures(fit_lw, fit_idx), 3),
+    FIML = round(fitmeasures(fit_fiml, fit_idx), 3)
+)
+
+knitr::kable(fit_table, align = "lrrr")
+```
+
+FIML does not improve model fit magically — it provides **more accurate** estimates of the population parameters by using all available information.
+
+```{r}
+#| echo: true
+
+# You can inspect the FIML fit just like any lavaan model
+summary(fit_fiml, standardized = TRUE, fit.measures = TRUE)
+```
+
+## FIML vs MI: When is common to use (not a rule)?
+
+:::: columns
+::: {.column width="50%"}
+
+**FIML:**
+
+-   Your model is a CFA, SEM, or path model
+-   You're already using lavaan / Mplus
+-   You want a simple, single-step solution
+-   You prefer not to manage multiple datasets
+
+:::
+
+::: {.column width="50%"}
+
+**MI:**
+
+-   Your analysis is not SEM-based (e.g., regression, ANOVA, mixed models)
+-   You need to use software that doesn't support FIML
+-   You want to include many auxiliary variables flexibly
+-   You need to do sensitivity analyses with different imputation models
+
+:::
+::::
+
+. . .
+
+::: {.callout-important}
+Both MI and FIML assume MAR. If you suspect MNAR, you need sensitivity analysis, neither method alone can save you.
+:::
+
+## Wrapping Up: Your Complete Toolkit
+
+| Method               | When to Use                           | Assumption | Bias? |
+|----------------------|---------------------------------------|------------|-------|
+| **Complete-case**    | Quick look, MCAR only                 | MCAR       | No (under MCAR) |
+| **MI (MICE)**        | Any model, any software               | MAR        | No (under MAR)   |
+| **FIML**    | CFA / SEM models                      | MAR        | No (under MAR)   |
+| **Sensitivity**      | When MNAR is suspected                | MNAR       | Depends          |
+
+**Your workflow:**
+
+1.  **Diagnose** Why is data missing? (MCAR / MAR / MNAR)
+2.  **Choose** Pick the right tool for your model and mechanism
+3.  **Check** Convergence, plausibility, sensitivity
+4.  **Report** Be transparent about what you did and why
+
+
+## References
+
+-   Little, R. J. A., & Rubin, D. B. (2002). *Statistical Analysis with Missing Data* (2nd ed.). Wiley.
+-   Rubin, D. B. (1976). Inference and missing data. *Biometrika, 63*(3), 581–592.
+-   Enders, C. K. (2010). *Applied Missing Data Analysis*. Guilford Press.
+-   Schafer, J. L., & Graham, J. W. (2002). Missing data: Our view of the state of the art. *Psychological Methods, 7*(2), 147–177.
+-   van Buuren, S., & Groothuis-Oudshoorn, K. (2011). mice: Multivariate Imputation by Chained Equations in R. *Journal of Statistical Software, 45*(3), 1–67.
+-   Rosseel, Y. (2012). lavaan: An R package for structural equation modeling. *Journal of Statistical Software, 48*(2), 1–36.
+-   White, I. R., Royston, P., & Wood, A. M. (2011). Multiple imputation using chained equations: Issues and guidance for practice. *Statistics in Medicine, 30*(4), 377–399.
+
+## Questions?
