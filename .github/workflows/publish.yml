@@ -39,6 +39,8 @@ jobs:
             any::patchwork
             any::knitr
             any::rmarkdown
+            any::mice
+            any::lavaan
 
       - name: Setup Quarto
         uses: quarto-dev/quarto-actions/setup@v2
