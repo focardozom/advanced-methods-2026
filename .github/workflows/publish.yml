@@ -36,6 +36,7 @@ jobs:
             any::arrow
             any::lavaan
             any::MplusAutomation
+            any::patchwork
             any::knitr
             any::rmarkdown
 
