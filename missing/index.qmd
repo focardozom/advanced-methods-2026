@@ -1,18 +1,66 @@
 ---
 title: "Missing Data"
-date: "2026-02-20"
+subtitle: "Mechanisms, Methods, and Applications"
+author: "Francisco Cardozo, PhD"
+date: today
 ---
 
-**Date:** Feb 20
+## Overview
+
+In this class, we will cover the theory and practice of handling missing data in quantitative research. We will learn how to identify different missingness mechanisms (MCAR, MAR, MNAR), understand their implications for statistical inference, and apply modern approaches—including full information maximum likelihood (FIML) and multiple imputation—to obtain valid estimates from incomplete datasets.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Distinguish between MCAR, MAR, and MNAR mechanisms from descriptions and data patterns
+2. Explain why complete-case analysis can produce biased estimates under MAR and MNAR
+3. Apply FIML estimation in a CFA model using lavaan or Mplus
+4. Conduct and interpret results from multiple imputation
+5. Evaluate the assumptions and trade-offs of different missing data methods
 
 ## Topics
+
 -   Maximum Likelihood estimation
+-   Full Information Maximum Likelihood (FIML)
 -   Multiple imputation
 -   Planned missingness designs
--   Machine Learning methods
+-   Machine Learning methods for missing data
 
-## Homework
-**Assignment #4:** Conduct multiple imputation analysis (both data generation and summary analysis). Due next week.
+## Materials
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-tip appearance="simple" icon=false}
+## Slides
+
+Access the class presentation slides:
+
+[View Class Slides](slides.qmd){.btn .btn-primary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-warning appearance="simple" icon=false}
+## Assignment
+
+Complete the Missing Data assignment:
+
+[View Assignment](assignment.qmd){.btn .btn-secondary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+:::
+
+### Assignment Overview
+
+In the assignment, you will:
+
+1. Classify missingness mechanisms from real-world scenarios
+2. Generate simulated data with MAR missingness
+3. Fit a CFA model using both listwise deletion and FIML
+4. Compare estimated parameters to the true values and reflect on the advantages of FIML
 
 ## Readings
 
@@ -21,9 +69,8 @@ date: "2026-02-20"
 
 ### Supplemental
 -   Graham, J. W., Olchowski, A. E., & Gilreath, T. D. (2007). How many imputations are really needed? Some practical clarifications of multiple imputation theory. *Prevention Science, 8*(3), 206-213.
--   Little, R. J., Carpenter, J. R., & Lee, K. J. (2022). A Comparison of Three Popular Methods for Handling Missing Data: Complete-Case Analysis, Inverse Probability Weighting, and Multiple Imputation. *Sociological Methods & Research, 53*(3), 1105-1135. https://doi.org/10.1177/00491241221113873 (Original work published 2024)
+-   Little, R. J., Carpenter, J. R., & Lee, K. J. (2022). A Comparison of Three Popular Methods for Handling Missing Data: Complete-Case Analysis, Inverse Probability Weighting, and Multiple Imputation. *Sociological Methods & Research, 53*(3), 1105-1135.
 -   Graham, J. W. (2009). Missing data analysis: Making it work in the real world. *Annual review of psychology, 60*, 549-576.
--   Shadish, W., Cook, T. & Campbell, D (2002). *Experimental & QuasiExperimental Designs for Generalized Causal Inference*. Boston: Houghton Mifflin. [pages 323-340]
 -   Baraldi, A. N., & Enders, C. K. (2010). An introduction to modern missing data analyses. *Journal of School Psychology, 48*(1), 5-37.
 -   Graham, J. W. (2012). *Missing data: Analysis and Design*. New York: Springer.
 -   Graham, J. W., Hofer, S. M., Donaldson, S. I., MacKinnon, D. P., & Schafer, J. L. (1997). Analysis with missing data in prevention research. *The science of prevention: Methodological advances from alcohol and substance abuse research, 1*, 325-366.

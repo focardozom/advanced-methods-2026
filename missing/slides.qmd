@@ -152,11 +152,11 @@ data_d <- complete_data
 
 :::: columns
 ::: {.column width="50%"}
-You are **data analysts** at a dating app. Your company collected data on **1,000 users** — height, sex, and whether they completed their full profile.
+You are data analysts at a dating app. Your company collected data on 1,000 users — height, sex, and whether they completed their full profile.
 
-But something went wrong. The data was incomplete, and now **four different versions** exist. Only one is the original.
+But something went wrong. The data was incomplete, and now four different versions exist. Only one is the original.
 
-**Your goal**: pick a door, analyze the data behind it, and figure out if your data has the truth.
+Your goal is to pick a door, analyze the data behind it, and figure out if your data has the truth.
 
 :::
 
@@ -175,18 +175,18 @@ But something went wrong. The data was incomplete, and now **four different vers
 :::
 
 ::: {.column width="50%"}
-Behind each door is a version of your dating app data with the same 1,000 users. Three were corrupted by a **different unknown force**. One was left untouched.
+Behind each door is a version of your dating app data with the same 1,000 users. Three were corrupted by a different unknown force. One was left untouched.
 
-**You must choose one door. That's your dataset.**
+You must choose one door. That's your dataset.
 
-One door has no missing values at all, you know the truth, so please don't tell us your data is complete.
+One door has no missing values at all, you know the truth, so please don't say your data is complete.
 
 :::
 ::::
 
 ## Choose Your Door
 
-Run this code to randomly select your door:
+Run the following code to randomly select your door:
 
 ```{webr-r}
 # Pick your door!
