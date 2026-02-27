@@ -1236,9 +1236,9 @@ We want to estimate power for a structural equation model:
 
 **Question:**
 
-With a sample of n = 200, do we have enough power to detect:
+With a sample of n = 40, do we have enough power to detect:
 
-- The regression effect of `F` on `y` (0.5)?
+- The regression effect of `F` on `y` (0.3)?
 
 **Answer:**
 
@@ -1348,81 +1348,21 @@ After running, Mplus produces a table like this:
 
 ### Interpreting Columns
 
-- **Population** — the true parameter value you specified
-- **Average** — mean of estimates across 1000 replications (should be close to Population if unbiased)
-- **Std. Dev.** — standard deviation of estimates across replications (empirical SE)
-- **S.E. Average** — mean of the model-based standard errors (should be close to Std. Dev.)
-- **M.S.E.** — mean squared error (combines bias and variance)
-- **95% Cover** — proportion of replications where the 95% CI contains the true value (should be ~0.95)
-- **% Sig Coeff** — proportion of replications where the parameter is significant (p < .05). This is the **power** estimate!
+- **Population** the true parameter value you specified
+- **Average** mean of estimates across 1000 replications (should be close to Population if unbiased)
+- **Std. Dev.** standard deviation of estimates across replications (empirical SE)
+- **S.E. Average** mean of the model-based standard errors (should be close to Std. Dev.)
+- **M.S.E.** mean squared error (combines bias and variance)
+- **95% Cover**  proportion of replications where the 95% CI contains the true value (should be ~0.95)
+- **% Sig Coeff**  proportion of replications where the parameter is significant (p < .05). This is the **power** estimate!
 
 ### What Do the Results Tell Us?
 
 With n = 40:
 
-- Factor loadings: % Sig ≈ 1.00 (all detected), but coverage is poor (0.40–0.82) — estimates are biased away from the population value of 1.00
-- Regression y ON F = 0.3: % Sig ≈ 0.621 (below the 0.80 threshold)
-- Residual variances: coverage for X4 is very low (0.134), indicating systematic bias in its estimate
-- The M.S.E. for the regression (0.105) is high relative to the effect size
+- Regression `y` ON `F`: % Sig ≈ 0.621 (below the 0.80 threshold), and coverage is only 0.379
 
-Conclusion: n = 40 is insufficient — the regression effect is underpowered and several parameters show poor coverage. We need a larger sample.
-
-:::
-
-## What If We Increase the Sample Size? {.smaller}
-
-::: {.panel-tabset}
-
-### n = 50
-
-```default
-MONTECARLO:
-  NAMES = x1-x4 y;
-  NOBSERVATIONS = 50;
-  NREPS = 1000;
-  SEED = 2026;
-```
-
-Expected results:
-
-- Factor loadings: power improves slightly (0.80–0.93)
-- Regression y ON F = 0.3: power ≈ 0.38 (still well below threshold)
-
-At n = 50, we gain little for the regression effect — the small effect size of 0.3 is hard to detect.
-
-### n = 200
-
-```default
-MONTECARLO:
-  NAMES = x1-x4 y;
-  NOBSERVATIONS = 200;
-  NREPS = 1000;
-  SEED = 2026;
-```
-
-Expected results:
-
-- Factor loadings: power ≈ 1.000
-- Regression y ON F = 0.3: power ≈ 0.82
-
-At n = 200, we finally cross the 0.80 power threshold for the regression effect.
-
-### n = 500
-
-```default
-MONTECARLO:
-  NAMES = x1-x4 y;
-  NOBSERVATIONS = 500;
-  NREPS = 1000;
-  SEED = 2026;
-```
-
-Expected results:
-
-- Factor loadings: power ≈ 1.000
-- Regression y ON F = 0.3: power ≈ 0.99
-
-At n = 500, everything is detected with near certainty — but is this sample size realistic for your study?
+Conclusion: n = 40 is insufficient to detect the regression effect. We need a larger sample or ?.
 
 :::
 
@@ -1448,10 +1388,7 @@ At n = 500, everything is detected with near certainty — but is this sample si
 - Use SEED for reproducibility
 - Check the Cover column — values far from 0.95 suggest model problems
 - Check that Average ≈ Population — large deviations indicate bias
-- The Mplus `.inp` files for this example are available in the `montecarlo/` folder:
-  - `power_sem.inp` (n = 200)
-  - `power_sem_n50.inp` (n = 50)
-  - `power_sem_n500.inp` (n = 500)
+- The Mplus `.inp` file for this example is available in the `montecarlo/` folder: `power_sem.inp`
 :::
 :::
 :::
