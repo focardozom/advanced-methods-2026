@@ -6,13 +6,14 @@ date: "2026-02-27"
 **Date:** Feb 27
 
 ## Overview
-Monte Carlo simulation is a powerful computational method that uses repeated random sampling to solve complex problems. In this module, we will explore its history, core intuition (using a chess example), and real-world applications in research design, including sample size determination and power analysis.
+Monte Carlo simulation is a powerful computational method that uses repeated random sampling to solve complex problems. Starting from the simple idea that a computer can estimate probabilities by trying things many times, we build up to sophisticated research design applications. Along the way, we explore the fascinating history — from a math feud in 1905 Russia to the Manhattan Project — that gave rise to these methods.
 
 ## Topics
--   **Introduction & History**: From the Manhattan Project to modern applications.
--   **Core Intuition**: Understanding probability through simulation (Chess Example).
--   **Convergence**: How simulated results approach theoretical probabilities.
--   **Applications**:
+-   **Solving Probability with Computers**: From coin flips to chess pieces — building intuition for random sampling and the Law of Large Numbers.
+-   **A Math Feud That Changed Everything**: The Markov vs. Nekrasov debate, Markov chains, and dependent events.
+-   **From Solitaire to the Atomic Bomb**: Ulam's insight, the Manhattan Project, and the birth of the Monte Carlo method.
+-   **Building Simulations**: Generating data, creating relationships, and understanding sampling variability.
+-   **Research Design Applications**:
     -   Sample Size Determination
     -   Minimum Detectable Effect
     -   Statistical Power Analysis

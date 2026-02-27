@@ -1,0 +1,151 @@
+/*-- scss:defaults --*/
+
+$um-green: #005030;
+$um-orange: #F47321;
+
+$font-family-sans-serif: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$font-family-monospace: "Fira Code", "Source Code Pro", monospace;
+
+$presentation-font-size-root: 32px;
+$presentation-h1-font-size: 2em;
+$presentation-h2-font-size: 1.3em;
+$presentation-h3-font-size: 1.1em;
+
+/*-- scss:rules --*/
+
+.reveal {
+  font-family: $font-family-sans-serif;
+  font-size: $presentation-font-size-root;
+  line-height: 1.4;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  font-family: $font-family-sans-serif;
+  color: $um-green;
+  font-weight: 600;
+}
+
+.reveal .slide-title,
+.reveal .title {
+  color: $um-green;
+  font-size: 2.5em;
+}
+
+.reveal .subtitle {
+  color: $um-orange;
+}
+
+.reveal p,
+.reveal li {
+  font-size: 1em;
+  line-height: 1.5;
+}
+
+.reveal .smaller p,
+.reveal .smaller li,
+.reveal .smaller table {
+  font-size: 1em;
+}
+
+.reveal pre {
+  font-family: $font-family-monospace;
+  font-size: 0.55em;
+  border-left: 3px solid $um-orange;
+  border-radius: 6px;
+}
+
+.reveal code {
+  font-family: $font-family-monospace;
+}
+
+.reveal table {
+  font-size: 0.75em;
+
+  th {
+    background-color: $um-green;
+    color: white;
+    padding: 0.4rem 0.6rem;
+  }
+
+  td {
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+}
+
+.reveal blockquote {
+  border-left: 4px solid $um-orange;
+  padding: 0.5em 1em;
+  font-style: italic;
+  background-color: rgba($um-orange, 0.05);
+  font-size: 0.85em;
+}
+
+.reveal .callout {
+  font-size: 1.1em;
+}
+
+.reveal .slide-number {
+  color: $um-green;
+  font-size: 0.6em;
+}
+
+$accent-green: #008000;
+
+.reveal .mc-flex {
+  display: flex;
+  justify-content: space-between;
+
+  &.center {
+    align-items: center;
+  }
+}
+
+.reveal .mc-content {
+  padding-right: 20px;
+}
+
+.reveal .mc-box {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+
+  h4 {
+    color: $accent-green;
+    margin-top: 0;
+    font-size: 0.95em;
+  }
+
+  h3 {
+    font-size: 1em;
+  }
+
+  ol, ul {
+    font-size: 0.8em;
+  }
+}
+
+.reveal .mc-box-accent {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid $accent-green;
+}
+
+.reveal .mc-box-highlight {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: $accent-green;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    color: white;
+    font-size: 0.9em;
+  }
+}
