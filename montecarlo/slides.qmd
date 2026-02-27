@@ -1,306 +1,119 @@
 ---
 title: "Monte Carlo Simulation"
-author: "Francisco Cardozo"
-format: 
+author: "Francisco Cardozo, PhD"
+subtitle: "EPH 752 Advanced Research Methods"
+engine: knitr
+filters:
+  - webr
+webr:
+  packages:
+    - dplyr
+    - ggplot2
+    - purrr
+    - tidyr
+    - scales
+format:
   revealjs:
-    theme: simple
-    logo: "../images/umlogo.svg"
+    theme: [simple, slides-styles.scss]
+    logo: "../images/umlogo.png"
     footer: "EPH 752 Advanced Research Methods"
-    chalkboard: true
-    title-slide-attributes:
-      data-background-color: "#008000"
     slide-number: true
-    code-line-numbers: false
-    code-block-bg: "#f8f8f8"
-    code-block-border-left: "#008000"
-    highlight-style: github
+    show-slide-number: all
     link-external-newwindow: true
-    transition: fade
-    smaller: true
-editor_options: 
+    code-overflow: wrap
+    scrollable: true
+editor_options:
   chunk_output_type: console
 ---
 
-# Introduction to Monte Carlo Methods {background-color="#008000"}
+```{webr-r}
+#| context: setup
 
-## What is Monte Carlo Simulation?
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(tidyr)
 
-::: {.panel-tabset}
-
-### Concept
-
-::: {.columns}
-::: {.column width="60%"}
-**A computational method that:**
-
-- Uses repeated random sampling to obtain numerical results
-- Approximates solutions to problems too complex for analytical methods
-- Generates countless "what-if" scenarios based on probability distributions
-- Named after the famous Monte Carlo Casino in Monaco
-:::
-
-::: {.column width="40%"}
-::: {.callout-note appearance="minimal"}
-## Core Principle
-
-Monte Carlo relies on the Law of Large Numbers:
-
-"As the number of random trials increases, the average result will converge to the expected value."
-:::
-:::
-:::
-
-### Applications
-
-::: {.columns}
-::: {.column width="50%"}
-**Scientific Applications:**
-
-- Statistical physics and quantum mechanics
-- Climate modeling and weather forecasting
-- Computational biology and genomics
-- Radiation physics and particle transport
-:::
-
-::: {.column width="50%"}
-**Practical Applications:**
-
-- Financial risk assessment
-- Project management
-- Machine learning and AI
-- Research design and power analysis
-- Supply chain optimization
-:::
-:::
-
-### Process
-
-::: {style="display: flex; justify-content: space-between; text-align: center;"}
-::: {.callout-tip}
-## Step 1
-**Generate Random Samples**
-
-Create random inputs based on probability distributions
-:::
-
-::: {.callout-tip}
-## Step 2
-**Perform Deterministic Calculations**
-
-Process inputs through your model or system
-:::
-
-::: {.callout-tip}
-## Step 3
-**Aggregate Results**
-
-Analyze statistics from multiple iterations
-:::
-:::
-
-:::
-
-#  {background-image="img/map.png" background-size="100%"}
-```{r libraries}
-#| echo: true
-#| eval: false
-library(tidyverse)
-```
-
-## Historical Development {.smaller}
-
-::: {.columns}
-
-::: {.column width="40%"}
-**Early foundations** 
-
-::: {.callout-note}
-## 17th-18th Century
-- Jacob Bernoulli (1655-1705)
-  - [Law of large numbers](https://www.stapplet.com/largenum.html)
-
-- Pierre-Simon Laplace (1749-1827)
-  - [Central limit theorem](https://onlinestatbook.com/stat_sim/sampling_dist/)
-:::
-:::
-
-::: {.column width="40%"}
-**Modern pioneers**
-
-::: {.callout-note}
-## 20th Century
-- Stanisław Ulam & John von Neumann (1940s)
-  - Manhattan Project
-  - First computerized applications
-  - Named after Ulam's gambling uncle
-:::
-:::
-
-:::
-
-## Andrei Andreyevich Markov {.smaller}
-
-::: {.columns}
-::: {.column width="60%"}
-- 14 June 1856 – 20 July 1922
-- Applied probability to poetry in 1906 
-- Analyzed letter sequences in Pushkin's novel Eugene Onegin
-- Developed theory of [Markov chains](https://setosa.io/blog/2014/07/26/markov-chains/)
-- Try the [Markomposition](http://mariechatfield.com/markomposition/) tool
-:::
-
-::: {.column width="40%"}
-::: {.callout-important}
-## Markov Chains
-A sequence of possible events where the probability of each event depends only on the state in the previous event.
-
-![](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Markovkate_01.svg/220px-Markovkate_01.svg.png)
-:::
-:::
-:::
-
-## Enrico Fermi's Innovation (1930s) {.smaller}
-
-::: {.columns}
-::: {.column width="60%"}
-::: {.incremental}
-- Pioneered "statistical sampling" to model neutron diffusion
-- Used simple probabilistic methods before modern computers
-- Created foundation for particle physics simulations
-:::
-:::
-
-::: {.column width="40%"}
-![](img/fermi.jpeg){.rounded-corners}
-:::
-:::
-
-## The Manhattan Project Connection {.smaller}
-
-::: {.columns}
-::: {.column width="50%"}
-**John von Neumann, Stanislaw Ulam, and Maria Goeppert Mayer:**
-
-- Developed Monte Carlo methods for hydrogen bomb simulations
-- Used the ENIAC computer at the University of Pennsylvania
-- First large-scale computational application of randomized algorithms
-:::
-
-::: {.column width="50%"}
-<iframe data-src="img/2020 Trinity brochure.pdf" width="100%" height="400"></iframe>
-:::
-:::
-
-## Monte Carlo Formalization (1950s) {.smaller}
-
-- Organized lecture series on simulation methods
-- Applications expanded to:
-  - Radiation shielding designs
-  - Nuclear reactor modeling
-  - Quantum chromodynamics
-
-> "Simulations in laboratories to test case after case of problems too complex for mathematical formulas."
-
-## The MANIAC Computer (1953) {.smaller}
-
-- **M**athematical **A**nalyzer, **N**umerical **I**ntegrator, **A**nd **C**omputer
-- 70,000 multiplications per second (modern computers: billions)
-- Journal of Chemical Physics published first formal Monte Carlo methods
-- Arianna Rosenbluth's contribution often overlooked
-  - "Once it took literally months to track down a small programming error"
-
-## Random Number Generation {.smaller}
-
-- A Million Random Digits (RAND Corporation, 1955)
-  - First published random number resource
-  - Before computational random number generators
-- A Million And One Random Digits (Douglas Crockford, 2022)
-  - Modern homage to the original work
-
-## Statistical Advancements {.smaller}
-
-- W. Keith Hastings (1970)
-  - Generalized Metropolis algorithm in the journal Biometrika
-  - Enabled Bayesian statistical applications
-
-> "A lot of statisticians were not oriented toward computing. They take these theoretical courses, crank out theoretical papers, and some of them want an exact answer."
-
-## Public Health Applications {.smaller}
-
-::: r-fit-text
-In 1991, Wesley O. Johnson and Joseph L. Gastwirth applied Bayesian Monte Carlo methods to demonstrate why universal HIV screening would be counterproductive. Their work showed that for rare diseases, even highly sensitive tests would generate many false positives, potentially leading to serious consequences. This work came at a critical time when several suicides were reported among people who had received positive HIV test results but were unaware of the possibility of false positives.
-:::
-
-## Recent Innovations {.smaller}
-
-- **Gradient-based methods**
-  - Utilize local curvature information
-  - Much more efficient sampling
-
-- **Hamiltonian Monte Carlo**
-  - Borrows concepts from physics
-  - Powers modern Bayesian software like Stan and PyMC
-  - Revolutionized complex statistical inference
-
-# Core Intuition {background-color="#fde74c"}
-
-## Probability: Formulas vs. Simulation {.smaller}
-
-**Theoretical approaches:**
-- Calculate exact probabilities using mathematical formulas
-- Often require simplifying assumptions
-- Can become intractable for complex systems
-
-**Monte Carlo approaches:**
-- Estimate probabilities through repeated random sampling
-- Handle complex situations with realistic constraints
-- Precision increases with number of simulations
-
-## Einstein on Randomness {.smaller}
-
-
-> "Insanity is doing the same thing over and over and expecting different results." *Albert Einstein*
-
-But in Monte Carlo simulations, we *do* the same thing over and over and *get* different results - that's the point!
-
-- Each simulation run produces different random outcomes
-- The collective results reveal the underlying probability distribution
-- The more simulations we run, the closer we get to the true probability
-
-## Chess Set Example {.smaller}
-
-![](img/chess.svg)
-
-```{r create-chess}
-#| echo: true
-#| code-fold: false
-#| code-summary: "Chess pieces dataset"
-#| eval: false
-
-# Create the chess data frame that will be used throughout the presentation
 chess <- tibble(
     Pieces = c(
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "PAWN",
-        "BISHOP",
-        "BISHOP",
-        "KNIGHT",
-        "KNIGHT",
-        "ROOK",
-        "ROOK",
+        "PAWN", "PAWN", "PAWN", "PAWN",
+        "PAWN", "PAWN", "PAWN", "PAWN",
+        "BISHOP", "BISHOP",
+        "KNIGHT", "KNIGHT",
+        "ROOK", "ROOK",
         "QUEEN",
         "KING"
     )
 )
 ```
 
-## What is the probability of picking the queen? {.smaller}
+# Can a computer solve probability? {background-color="#008000"}
+
+## The Big Question {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+What if, instead of deriving complex mathematical formulas, we could just...
+
+- Try it thousands of times
+- Count how often something happens
+- Estimate the probability from the results
+
+This is the fundamental idea behind Monte Carlo simulation.
+:::
+
+::: {.column width="40%"}
+::: {.callout-tip appearance="minimal"}
+## The Core Insight
+
+If you flip a coin 10 times, you might get 6 heads. That's not 50/50.
+
+But if you flip it 1,000 times, the ratio will settle close to 50/50.
+
+The more you try, the closer you get to the truth.
+:::
+:::
+:::
+
+## The Simplest Case: A Coin Flip {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+When you flip a coin 10 times, you might get 6 heads and 4 tails — obviously not 50/50.
+
+But if you keep flipping:
+
+- At first the ratio jumps all over the place
+- After many flips, it slowly settles down
+- After 100 flips: maybe 51 heads, 49 tails
+
+:::
+::: {.column width="50%"}
+
+::: {.callout-note}
+## The Law of Large Numbers
+
+As the number of random trials increases, the average result will converge to the expected value.
+
+First proven by Jacob Bernoulli in 1713, a foundational idea in probability for over 200 years.
+:::
+:::
+:::
+
+. . .
+
+> But Bernoulli only proved this works for independent events. What about the real world, where almost everything depends on something else?
+
+## Let's Try It with a Chess Set {.smaller}
+
+![](img/chess.svg)
+
+```{webr-r}
+chess
+```
+
+## What is the probability of picking the Queen? {.smaller}
 
 ::: {.panel-tabset}
 
@@ -310,191 +123,150 @@ chess <- tibble(
 ## Mathematical Solution
 
 $$P(\text{Queen}) = \frac{\text{Number of Queens}}{\text{Total Chess Pieces}} = \frac{1}{16} = 0.0625$$
+
 :::
 
-### Monte Carlo Simulation
+This is easy, we can solve it with a formula. But what if the problem were harder?
+
+### Monte Carlo Approach
 
 ::: {.callout-tip}
 ## Simulation Approach
 
-We sample repeatedly from all chess pieces and count how often we get the Queen.
+Instead of calculating, we just:
 
-As samples increase, our estimate approaches the true probability of 1/16 = 0.0625.
+1. Randomly pick a piece from the bag
+2. Write down what we got
+3. Put it back and repeat, many times
+4. Count how often we got the Queen
+
+As samples increase, our estimate approaches 1/16 = 0.0625.
 :::
 
 :::
 
-## What is the probability of picking two bishops? {.smaller}
+## Let's Try: 10 Samples {.smaller}
 
-::: {.panel-tabset}
+First, how many samples do we want to try?
 
-### Formula
-
-::: {.callout-note}
-## Mathematical Solution
-
-$$P(\text{Both Bishops}) = \frac{\binom{2}{2}}{\binom{16}{2}} = \frac{1}{120} \approx 0.0083$$
-
-Where:
-
-$\binom{2}{2}$ = Ways to choose 2 bishops from 2 bishops = 1
-
-$\binom{16}{2}$ = Ways to choose 2 pieces from 16 pieces = 120
-:::
-
-### Monte Carlo Simulation
-
-::: {.callout-tip}
-## Simulation Approach
-
-We repeatedly sample 2 pieces from the chess set and count how often we get both bishops.
-:::
-
-:::
-
-## What is the probability of picking a queen?
-
-Get 10 samples
-
-```{r}
-#| echo: true
-#| eval: false
+```{webr-r}
 total_samples <- seq(1, 10, 1)
 total_samples
 ```
 
+Now we can simulate the process:
 
-## What is the probability of picking a queen?
-
-```{r}
-#| echo: true
-#| eval: false
-data <- map_dfr(total_samples, ~ sample_n(chess, 1), .id = "sample")
+```{webr-r}
+data <- map_dfr(total_samples, ~ slice_sample(chess, n = 1), .id = "sample")
 data
 ```
 
-## What is the probability of picking a queen?
+## Results with 10 Samples {.smaller}
 
 ::: {.panel-tabset}
 
 ## Results
 
-```{r}
-#| echo: true
-#| eval: false
-data %>% group_by(Pieces) %>% count() %>% ungroup() %>% mutate(p = n / sum(n))
+```{webr-r}
+data |>
+    count(Pieces) |>
+    mutate(p = n / sum(n))
 ```
+
+Did we get close to 0.0625? Probably not, 10 samples isn't enough.
 
 ## Formula
 
-
-$$P(\text{Queen}) = \frac{\text{Number of Queens}}{\text{Total Chess Pieces}} = \frac{1}{16} = 0.0625$$
-
-Where:
-
-$\binom{1}{1}$ = Ways to choose 1 queen from 1 queen = 1
-
-$\binom{16}{1}$ = Ways to choose 1 piece from 16 pieces = 16
-
+$$P(\text{Queen}) = \frac{1}{16} = 0.0625$$
 
 :::
 
+## Let's Try: 100 Samples {.smaller}
 
-## What is the probability of picking a queen?
+::: {.panel-tabset}
 
-```{r}
-#| echo: true
-#| eval: false
+## Results
+
+```{webr-r}
 total_samples <- seq(1, 100, 1)
-total_samples
+
+data <- map_dfr(total_samples, ~ slice_sample(chess, n = 1), .id = "sample")
+
+data |>
+    count(Pieces) |>
+    mutate(p = n / sum(n))
 ```
 
-
-## What is the probability of picking a queen?
-
-::: {.panel-tabset}
-
-## Results
-
-```{r}
-#| echo: true
-#| eval: false
-data <- map_dfr(total_samples, ~ sample_n(chess, 1), .id = "sample")
-
-data %>% group_by(Pieces) %>% count() %>% ungroup() %>% mutate(p = n / sum(n))
-```
+Getting closer?
 
 ## Formula
 
-
-$$P(\text{Queen}) = \frac{\text{Number of Queens}}{\text{Total Chess Pieces}} = \frac{1}{16} = 0.0625$$
-
-Where:
-
-$\binom{1}{1}$ = Ways to choose 1 queen from 1 queen = 1
-
-$\binom{16}{1}$ = Ways to choose 1 piece from 16 pieces = 16
+$$P(\text{Queen}) = \frac{1}{16} = 0.0625$$
 
 :::
 
-
-## What is the probability of picking a queen?
+## Let's Try: 500 Samples {.smaller}
 
 ::: {.panel-tabset}
 
 ## Results
 
-Generate 500 samples
-```{r}
-#| echo: true
-#| eval: false
+```{webr-r}
 total_samples <- seq(1, 500, 1)
 
-data <- map_dfr(total_samples, ~ sample_n(chess, 1), .id = "sample")
+data <- map_dfr(total_samples, ~ slice_sample(chess, n = 1), .id = "sample")
 
-data %>% group_by(Pieces) %>% count() %>% ungroup() %>% mutate(p = n / sum(n))
-
+data |>
+    count(Pieces) |>
+    mutate(p = n / sum(n))
 ```
 
 ## Formula
 
-$$P(\text{Queen}) = \frac{\text{Number of Queens}}{\text{Total Chess Pieces}} = \frac{1}{16} = 0.0625$$
-
+$$P(\text{Queen}) = \frac{1}{16} = 0.0625$$
 
 :::
 
-
-## Convergence: Monte Carlo to Theoretical Probability
+## Watching Convergence {.smaller}
 
 ```{r}
 #| echo: false
-#| eval: false
+#| eval: true
 
-# Theoretical probability of picking a queen
+library(tidyverse)
+
+set.seed(2026)
 theoretical_prob <- 1 / 16
 
-# Run Monte Carlo with increasing sample sizes
-sample_sizes <- c(10, 50, 100, 300, 500, 1000, 1300)
+chess_local <- tibble(
+    Pieces = c(
+        "PAWN", "PAWN", "PAWN", "PAWN",
+        "PAWN", "PAWN", "PAWN", "PAWN",
+        "BISHOP", "BISHOP",
+        "KNIGHT", "KNIGHT",
+        "ROOK", "ROOK",
+        "QUEEN",
+        "KING"
+    )
+)
+
+sample_sizes <- c(10, 50, 100, 300, 500, 1000)
 convergence_results <- tibble(sample_size = integer(), queen_prob = numeric())
 
 for (size in sample_sizes) {
-    # Run simulation
-    samples <- map_dfr(seq(1, size, 1), ~ sample_n(chess, 1), .id = "sample")
+    samples <- map_dfr(seq(1, size, 1), ~ slice_sample(chess_local, n = 1), .id = "sample")
 
-    # Calculate probability
-    queen_count <- samples %>%
-        filter(Pieces == "QUEEN") %>%
+    queen_count <- samples |>
+        filter(Pieces == "QUEEN") |>
         nrow()
 
     prob <- queen_count / size
 
-    # Store result
-    convergence_results <- convergence_results %>%
+    convergence_results <- convergence_results |>
         add_row(sample_size = size, queen_prob = prob)
 }
 
-# Add theoretical line
-convergence_results %>%
+convergence_results |>
     ggplot(aes(x = sample_size, y = queen_prob)) +
     geom_point(color = "#008000", size = 3) +
     geom_line(color = "#008000") +
@@ -518,7 +290,43 @@ convergence_results %>%
     )
 ```
 
-## What is the probability of picking the KING in the middle of two PAWNS?
+More samples → closer to the true probability. That's the Law of Large Numbers in action.
+
+. . .
+
+As sample size increases, Monte Carlo estimates converge to theoretical probabilities (Law of Large Numbers). The computer does the hard work for us.
+
+## Now Make It Harder: Two Bishops {.smaller}
+
+::: {.panel-tabset}
+
+### Formula
+
+::: {.callout-note}
+## Mathematical Solution
+
+$$P(\text{Both Bishops}) = \frac{\binom{2}{2}}{\binom{16}{2}} = \frac{1}{120} \approx 0.0083$$
+
+Where:
+
+$\binom{2}{2}$ = Ways to choose 2 bishops from 2 bishops = 1
+
+$\binom{16}{2}$ = Ways to choose 2 pieces from 16 pieces = 120
+:::
+
+### Monte Carlo Approach
+
+::: {.callout-tip}
+## Simulation Approach
+
+We repeatedly sample 2 pieces from the chess set and count how often we get both bishops.
+
+No formula needed,  just sampling and counting.
+:::
+
+:::
+
+## Even Harder: KING Between Two PAWNs {.smaller}
 
 ::: {.panel-tabset}
 
@@ -530,217 +338,486 @@ $$P(\text{PAWN, KING, PAWN}) =
 Where:
 
 - $\binom{8}{2}$ = Ways to choose 2 pawns from 8 pawns = 28
-
 - $\binom{1}{1}$ = Ways to choose 1 king from 1 king = 1
-
 - $\binom{16}{3}$ = Ways to choose 3 pieces from 16 pieces = 560
-
 - $\frac{1}{3!}$ = Probability of specific order (PAWN, KING, PAWN)
 
-## Monte Carlo Simulation
+## Monte Carlo
 
 We repeatedly sample 3 pieces and check if they match the pattern:
 
 1. First piece is PAWN
-
 2. Second piece is KING
-
 3. Third piece is PAWN
 
-As samples increase, our estimate approaches the true probability.
+No need to derive the formula, just simulate and count!
 
 :::
 
-## Monte Carlo Simulation: KING in middle of two PAWNS
+## Simulating the KING Pattern {.smaller}
 
-Generate 1000 samples
+```{webr-r}
+total_samples <- seq(1, 1000, 1)
 
-```{r}
-#| echo: true
-#| eval: false
-total_samples <- seq(1,1000,1)
-
-data <- map_dfr(total_samples, ~sample_n(chess, 3), .id = "sample")
+data <- map_dfr(total_samples, ~ slice_sample(chess, n = 3), .id = "sample")
 
 data
-
 ```
 
-## Results: KING in middle of two PAWNS
+## Results: KING Between Two PAWNs {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-data %>% group_by(sample) %>% 
-  mutate(Position=row_number()) %>% 
-  filter((Position==1 & Pieces=="PAWN") &
-         (Position==2 & Pieces=="KING") &
-         (Position==3 & Pieces=="PAWN"))  %>% 
-  count(sample) %>% arrange(desc(n)) |> 
-  ungroup() |> 
+```{webr-r}
+data |>
+  mutate(Position = row_number(), .by = sample) |>
+  filter((Position == 1 & Pieces == "PAWN") &
+         (Position == 2 & Pieces == "KING") &
+         (Position == 3 & Pieces == "PAWN")) |>
+  count(sample) |> arrange(desc(n)) |>
   count(n)
 ```
 
-## Formula vs. Monte Carlo: Key Insights
+## The Pattern So Far {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+With Formulas:
+
+- Exact answers  
+- Require complete mathematical specification 
+- Get very complex very fast  
+- Sometimes impossible for realistic problems  
+
+:::
+
+::: {.column width="50%"}
+With Monte Carlo:
+
+- Approximate answers  
+- Just simulate and count 
+- Handle any level of complexity  
+- Accuracy increases with more samples 
+:::
+:::
+
+. . .
+
+::: {.callout-important}
+As sample size increases, Monte Carlo estimates converge to theoretical probabilities (Law of Large Numbers). The computer does the hard work for us.
+:::
 
 
-**Theoretical Formulas:**
-- Provide exact probabilities
-- Require complete mathematical specification
-- Can become very complex for realistic problems
-- May be intractable for high-dimensional problems
+# A Math Dispute That Changed Everything {background-color="#fde74c"}
 
-**Monte Carlo Simulations:**
-- Provide approximate probabilities
-- Accuracy increases with sample size
-- Can handle complex, high-dimensional problems
-- Works when analytical solutions are difficult or impossible
+## Russia, 1905 {.smaller}
 
-As sample size increases, Monte Carlo estimates converge to theoretical probabilities (Law of Large Numbers).
+::: {.columns}
+::: {.column width="50%"}
 
-## We can simulate more complex things
+![Pavel Nekrasov (1853–1924)](img/nekrasov.jpg){width="45%"}
+![Andrey Markov (1856–1922)](img/markov.jpg){width="45%"}
+:::
 
-```{r}
-#| echo: true
-#| eval: false
-#| 
-x <- rnorm(300, mean=0, sd=1)
+::: {.column width="50%"}
+::: {.callout}
+## The Two Sides
+
+*Pavel Nekrasov*, *The Tsar of Probability*
+
+- Religious, powerful, defended the status quo  
+- Argued math could explain free will  
+
+*Andrey Markov*, *Andrey the Furious*
+
+- Atheist, rigorous, had no patience for sloppy reasoning  
+- Called Nekrasov's work "an abuse of mathematics"  
+:::
+:::
+:::
+
+## The Argument: Independence and Free Will {.smaller}
+
+Their dispute centered on the Law of Large Numbers, the same idea we just used with chess pieces.
+
+::: {.columns}
+::: {.column width="50%"}
+Nekrasov's reasoning:
+1. Bernoulli proved the Law of Large Numbers works for independent events  
+2. Social statistics (marriage rates, crime rates) follow the Law of Large Numbers  
+3. Therefore, the decisions behind them must be independent
+4. Independent decisions = free will  
+
+> *"Free will is not just philosophical, it's measurable!"*
+:::
+
+::: {.column width="50%"}
+Markov's response:
+
+> Just because we see convergence doesn't mean the events are independent.
+
+He set out to prove that dependent events could also follow the Law of Large Numbers.
+
+He needed an example where one event clearly depends on what came before...
+:::
+:::
+
+## Markov's Counterattack: Poetry as Data {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+
+Markov turned to *Eugene Onegin* by *Alexander Pushkin*, a masterpiece of Russian literature.
+
+He took the first 20,000 letters, stripped out punctuation and spaces, and analyzed them:
+
+- 43% vowels, 57% consonants
+- If letters were independent, vowel-vowel pairs should appear 18% of the time (0.43 × 0.43)
+- But he found vowel-vowel pairs only 6% of the time
+
+The letters were clearly dependent, what comes next depends on what came before.
+:::
+
+::: {.column width="40%"}
+::: {.callout-note}
+## The Test
+
+If Markov could show that these dependent letters still followed the Law of Large Numbers, he would shatter Nekrasov's argument.
+
+And that's exactly what he did.
+:::
+:::
+:::
+
+## The First Markov Chain {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+
+Markov built a prediction machine with just two states:
+
+1. Start at a vowel or consonant
+2. Look up the transition probability to the next state
+3. Generate a random number to decide what happens
+4. Repeat
+
+After many steps, the ratio converged to 43% vowels and 57% consonants, exactly what he counted by hand.
+
+Dependent events following the Law of Large Numbers.
+:::
+
+::: {.column width="40%"}
+::: {.callout-important}
+## Markov Chains
+A sequence of events where the probability of each event depends only on the current state.
+
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Markovkate_01.svg/220px-Markovkate_01.svg.png)
+
+Try it: [Markov Chain Visualization](https://setosa.io/blog/2014/07/26/markov-chains/)
+:::
+:::
+:::
+
+## "Free Will Is Not Necessary to Do Probability" {.smaller}
+
+In fact, independence isn't even necessary. With Markov chains, he found a way to do probability with dependent events.
+
+This should have been a huge breakthrough, because in the real world, almost everything depends on something else:
+
+- Weather tomorrow depends on conditions today
+- How a disease spreads depends on who is infected now
+- The behavior of particles depends on particles around them
+
+. . .
+
+But Markov himself didn't seem to care much about applications.
+
+> *"I am concerned only with questions of pure analysis. I refer to the question of applicability with indifference."*
+
+Little did he know what would come next.
+
+# From Solitaire to the Atomic Bomb {background-color="#008000"}
+
+## Enrico Fermi's Innovation (1930s) {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+::: {.incremental}
+- Pioneered "statistical sampling" to model neutron diffusion
+- Used simple probabilistic methods before modern computers
+- Created the foundation for particle physics simulations
+:::
+:::
+
+::: {.column width="40%"}
+![](img/fermi.jpeg){.rounded-corners}
+:::
+:::
+
+## Ulam's Solitaire Moment (1946) {.smaller}
+
+::: {.columns}
+::: {.column width="55%"}
+
+In January 1946, mathematician Stanislaw Ulam was struck by severe encephalitis. During his long recovery, he played countless games of Solitaire.
+
+One question kept nagging him: *What are the chances that a randomly-shuffled game can be won?*
+
+With 52 cards, there are 52! possible arrangements, about 8 × 10^67^. Solving this analytically was hopeless.
+
+Then Ulam had a flash of insight: *What if I just play hundreds of games and count how many can be won?*
+:::
+
+::: {.column width="45%"}
+::: {.callout-tip}
+## The Monte Carlo Insight
+
+This is exactly what we did with chess pieces!
+
+Instead of deriving a formula, just:
+
+1. Generate random scenarios
+2. Check the outcome
+3. Repeat many times
+4. Count the results
+
+The key difference: now he wanted to apply this to nuclear physics.
+:::
+:::
+:::
+
+## The Manhattan Project Connection {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+Back at Los Alamos, scientists were trying to figure out how neutrons behave inside a nuclear core.
+
+A neutron can:
+
+- Scatter off an atom and keep traveling
+- Get absorbed or leave the system
+- Cause fission, splitting a uranium atom and releasing two or three more neutrons
+
+Each step depends on the previous one, it's a Markov chain.
+
+Ulam shared his Solitaire idea with *John von Neumann*, who immediately saw its power: simulate the chain on a computer.
+:::
+
+::: {.column width="50%"}
+![Fission of a uranium-235 nucleus: a neutron is captured, forming unstable U-236, which splits into two fragments releasing three more neutrons.](img/nuclear_fission.svg)
+:::
+:::
+
+## The Birth of Monte Carlo {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+
+Von Neumann and Ulam ran their neutron simulations on the ENIAC, one of the world's first electronic computers.
+
+They tracked the multiplication factor *k*:
+
+- *k* < 1: reaction dies down
+- *k* = 1: self-sustaining chain reaction
+- *k* > 1: exponential growth — a bomb
+
+The method needed a name. Ulam's uncle was a gambler, and the random sampling reminded him of the Monte Carlo Casino in Monaco.
+
+The Monte Carlo method was born.
+:::
+
+::: {.column width="40%"}
+::: {.callout-note}
+## The MANIAC Computer (1953)
+
+Mathematical Analyzer, Numerical Integrator, And Computer
+
+- 70,000 multiplications per second (modern computers: billions)
+- Arianna Rosenbluth's contribution often overlooked
+:::
+:::
+:::
+
+## Key Milestones After the Bomb {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+1955, *RAND Corporation* publishes *A Million Random Digits*, the first resource for random number generation
+
+1970, *W. Keith Hastings* generalizes the Metropolis algorithm, enabling Bayesian applications
+
+> "A lot of statisticians were not oriented toward computing. They take these theoretical courses, crank out theoretical papers, and some of them want an exact answer.*
+:::
+
+::: {.column width="50%"}
+1991, *Johnson & Gastwirth* use Bayesian Monte Carlo to show why universal HIV screening would be counterproductive, even highly sensitive tests generate many false positives for rare diseases
+
+Today, *Hamiltonian Monte Carlo* powers modern Bayesian software like Stan and PyMC, making complex statistical inference accessible to researchers everywhere
+:::
+:::
+
+# {background-image="img/map.png" background-size="100%"}
+
+# What Is Monte Carlo Simulation? {background-color="#fde74c"}
+
+## Putting It All Together {.smaller}
+
+::: {.columns}
+::: {.column width="60%"}
+Monte Carlo simulation is a computational method that:
+
+- Uses repeated random sampling to obtain numerical results  
+- Approximates solutions to problems too complex for formulas  
+- Generates countless "what-if" scenarios based on probability distributions  
+- Works by leveraging the Law of Large Numbers, more trials → better estimates
+:::
+
+::: {.column width="40%"}
+::: {.callout-tip appearance="minimal"}
+## The Three Steps
+
+1. Generate random inputs from probability distributions
+
+2. Process those inputs through your model
+
+3. Aggregate statistics from many iterations
+:::
+:::
+:::
+
+## Einstein Was Wrong (Sort of) {.smaller}
+
+> *"Insanity is doing the same thing over and over and expecting different results."* Albert Einstein
+
+. . .
+
+But in Monte Carlo simulations, we *do* the same thing over and over and *get* different results, that's the whole point!
+
+- Each simulation run produces different random outcomes
+- The collective results reveal the underlying probability distribution
+- The more simulations we run, the closer we get to the truth
+
+. . .
+
+This is not insanity, it's science.
+
+
+# Building More Complex Simulations {background-color="#008000"}
+
+## From Chess Pieces to Data Generation {.smaller}
+
+So far we've sampled from a bag of chess pieces. But we can simulate anything:
+
+- Continuous variables (heights, test scores, income)
+- Binary outcomes (treatment/control, yes/no)
+- Relationships between variables
+- Entire regression models
+
+Let's build up, step by step.
+
+## Simulating a Continuous Variable {.smaller}
+
+```{webr-r}
+x <- rnorm(300, mean = 0, sd = 1)
 x
 ```
 
-## We can simulate more complex things
+## Visualizing the Distribution {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-
-ggplot(as.data.frame(x), aes(x)) + geom_histogram(fill="#008000") + 
+```{webr-r}
+ggplot(as.data.frame(x), aes(x)) + 
+  geom_histogram(fill = "#008000") + 
   theme_minimal()
 ```
 
-## We can simulate more complex things
+## Simulating a Binary Variable {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-y <- rbinom(300, 1,.5)
+```{webr-r}
+y <- rbinom(300, 1, .5)
 y
 ```
 
-## We can simulate more complex things
+## Visualizing the Binary Variable {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-ggplot(as.data.frame(y), aes(y)) + 
-  geom_bar(aes(y = ..prop..), stat="count", fill="#008000") +
-  scale_y_continuous(labels=scales::percent) +
-  geom_text(aes( label = scales::percent(..prop..),
-                   y= ..prop.. ), stat= "count", 
-            position = position_stack(vjust=0.5),
-            color="#fde74c", size=18) +
-  theme_void() 
-  
-
+```{webr-r}
+ggplot(as.data.frame(y), aes(factor(y))) + 
+  geom_bar(aes(y = after_stat(prop), group = 1), fill = "#008000") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "y") +
+  theme_void()
 ```
 
-## We can simulate more complex things
+## Creating a Relationship {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-z <- 1.5 + 0.8*(y) + x
-```
+Now let's create a variable z that depends on both x and y:
 
-```{r}
-#| echo: true
-#| eval: false
+$$z = 1.5 + 0.8 \times y + x$$
+
+```{webr-r}
+z <- 1.5 + 0.8 * (y) + x
 z
 ```
 
-## We can simulate more complex things
+We know the true effect of y on z is 0.8. Can we recover it?
 
-```{r}
-#| echo: true
-#| eval: false
+## Recovering the True Effect {.smaller}
+
+```{webr-r}
 lm(z ~ y)
-
 ```
 
-## We can play
+With all 300 observations, we should get close to 0.8.
 
-```{r}
-#| echo: true
-#| eval: false
-data <- tibble(x,y,z)
-data
+## But What Happens with Smaller Samples? {.smaller}
+
+```{webr-r}
+data <- tibble(x, y, z)
+
+sample_1 <- slice_sample(data, prop = 0.1)
+sample_2 <- slice_sample(data, prop = 0.1)
+sample_3 <- slice_sample(data, prop = 0.1)
 ```
 
-## Create subsamples
+## Each Sample Gives a Different Answer {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-sample_1 <- sample_frac(data, 0.1)
-sample_2 <- sample_frac(data, 0.1)
-sample_3 <- sample_frac(data, 0.1)
-
+```{webr-r}
+lm(z ~ y, data = sample_1)
+lm(z ~ y, data = sample_2)
+lm(z ~ y, data = sample_3)
 ```
 
-## Estimate a regression for each sample 
+. . .
 
-```{r}
-#| echo: true
-#| eval: false
-lm(z ~ y, data=sample_1)
-lm(z ~ y, data=sample_2)
-```
+Different samples → different estimates. This is sampling variability, and Monte Carlo helps us understand it.
 
-## Estimate a regression for each sample 
+## Let's Do This 60 Times {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-lm(z ~ y, data=sample_3)
-
-```
-
-## We can do the same several times
-
-```{r}
-#| echo: true
-#| eval: false
-several_samples <- map(seq(1,60,1), ~sample_frac(data, 0.1))
+```{webr-r}
+several_samples <- map(seq(1, 60, 1), ~ slice_sample(data, prop = 0.1))
 several_samples
 ```
 
-## We can do the same several times
+## Run a Regression on Each Sample {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-several_regressions <- map(several_samples, ~lm(z ~ y, data=.))
+```{webr-r}
+several_regressions <- map(several_samples, ~ lm(z ~ y, data = .))
 several_regressions
 ```
 
-## We can do the same several times
+## Extract the Coefficients {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
+```{webr-r}
 several_regressions <- map(several_samples, 
-                           ~lm(z ~ y, data=.)[[1]][[2]])
+                           ~ lm(z ~ y, data = .)[[1]][[2]])
 several_regressions
 ```
 
-## We can do the same several times
+## The Sampling Distribution of Effects {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
+```{webr-r}
 all_effects <- 
-  several_regressions %>% 
-  bind_cols() %>% 
+  several_regressions |> 
+  bind_cols() |> 
   pivot_longer(everything(), 
                names_to = "Sample",
                values_to = "Coef")
@@ -748,40 +825,42 @@ all_effects <-
 all_effects
 ```
 
-## We can do the same several times
+## Visualizing the Sampling Distribution {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-mean <- mean(all_effects$Coef)
-ggplot(all_effects, aes(Coef)) +geom_histogram(fill="#fde74c") +
-  theme_minimal() +  geom_vline(xintercept = mean, linetype="dashed", color='#008000')
-
+```{webr-r}
+avg <- mean(all_effects$Coef)
+ggplot(all_effects, aes(Coef)) + 
+  geom_histogram(fill = "#fde74c") +
+  theme_minimal() + 
+  geom_vline(xintercept = avg, linetype = "dashed", color = '#008000') +
+  geom_vline(xintercept = 0.8, linetype = "dotted", color = '#ff5252')
 ```
 
-## How many times have you underestimated the effect?
+The dashed green line is our average estimate. The dotted red line is the true effect (0.8).
 
-```{r}
-#| echo: true
-#| eval: false
-all_effects %>% filter(Coef<0.8)
+## How Often Did We Underestimate? {.smaller}
 
+```{webr-r}
+all_effects |> filter(Coef < 0.8)
 ```
 
-## How often do you say there is no effect or the effect is negative?
+## How Often Did We Find No Effect or a Negative Effect? {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-all_effects %>% filter(Coef<=0)
-
+```{webr-r}
+all_effects |> filter(Coef <= 0)
 ```
 
+. . .
 
-# Real-World Applications of Monte Carlo {background-color="#008000" .smaller}
+This is the essence of statistical power: *how often will our study detect an effect that truly exists?*
 
-## Research Design Applications {.smaller background-color="#fde74c" background-image="img/model.svg" background-size="30%" background-position="right"}
 
+# Real-World Applications of Monte Carlo {background-color="#008000"}
+
+## Research Design Applications {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
 Monte Carlo simulations help researchers make informed decisions about:
 
 - Required sample sizes
@@ -790,29 +869,39 @@ Monte Carlo simulations help researchers make informed decisions about:
 - Impact of missing data
 - Measurement reliability
 
+:::
+
+::: {.column width="50%"}
+![](img/model.svg)
+:::
+
+:::
+
 ## Application 1: Sample Size Determination {.smaller}
 
 ::: {.panel-tabset}
 
 ### Scenario
 
-<div style="display: flex; justify-content: space-between;">
-<div style="width: 55%; padding-right: 20px;">
+<div class="mc-flex">
+<div class="mc-content" style="width: 55%;">
 
-**Research Question:**  
-What sample size do we need to detect a correlation of 0.5 between happiness and optimism?
+**Question:**
 
-**Parameters:**
-- Target correlation: 0.5
-- Desired power: 0.8 (80%)
-- Alpha level: 0.05
-- Factor loading: 0.8 (reliability of measures)
-- Missing data: none
+*What sample size do we need to detect a correlation of 0.5 between happiness and optimism?*
+
+Fixed Parameters:
+
+- Target correlation: 0.5  
+- Desired power: 0.8 (80%)  
+- Alpha level: 0.05  
+- Factor loading: 0.8 (reliability of measures)  
+- Missing data: none  
 
 </div>
-<div style="width: 40%; background-color: #f5f5f5; padding: 15px; border-radius: 8px;">
-<h4 style="color: #008000; margin-top: 0; font-size: 0.95em;">Monte Carlo Approach</h4>
-<ol style="font-size: 0.8em;">
+<div class="mc-box" style="width: 40%;">
+<h4>Monte Carlo Approach</h4>
+<ol>
 <li>Simulate data with the target correlation</li>
 <li>Run tests with increasing sample sizes</li>
 <li>Calculate power at each sample size</li>
@@ -827,69 +916,49 @@ What sample size do we need to detect a correlation of 0.5 between happiness and
 #| echo: true
 #| eval: false
 
-sample_size_simulation <- function(correlation, alpha, power, trials = 1000) {
-  results <- tibble(n = integer(), achieved_power = numeric())
-  
-  # Try sample sizes from 10 to 100
-  for(n in seq(10, 100, by = 5)) {
-    significant_tests <- 0
-    
-    # Run multiple trials
-    for(i in 1:trials) {
-      # Generate data with specified correlation
-      data <- MASS::mvrnorm(n, 
-                     mu = c(0, 0), 
-                     Sigma = matrix(c(1, correlation, correlation, 1), 2, 2))
-      
-      data <- as.data.frame(data)
-      names(data) <- c("happiness", "optimism")
-      
-      # Run correlation test
-      test_result <- cor.test(data$happiness, data$optimism)
-      
-      # Count significant results
-      if(test_result$p.value < alpha) {
-        significant_tests <- significant_tests + 1
-      }
-    }
-    
-    # Calculate power
-    achieved_power <- significant_tests / trials
-    
-    # Store results
-    results <- results %>% add_row(n = n, achieved_power = achieved_power)
-    
-    # Stop if we've reached our target power
-    if(achieved_power >= power) break
-  }
-  
-  return(results)
-}
+correlation <- 0.5
+alpha <- 0.05
+trials <- 1000
 
-# Run simulation
-results <- sample_size_simulation(correlation = 0.5, alpha = 0.05, power = 0.8)
+results <- tibble(n = seq(10, 100, by = 5)) |>
+  mutate(
+    sims = map(n, \(n) {
+      tibble(trial = 1:trials) |>
+        mutate(
+          data = map(trial, \(t) {
+            MASS::mvrnorm(n, mu = c(0, 0),
+                          Sigma = matrix(c(1, correlation, correlation, 1), 2, 2)) |>
+              as_tibble(.name_repair = ~c("happiness", "optimism"))
+          }),
+          p_value = map_dbl(data, \(d) cor.test(d$happiness, d$optimism)$p.value)
+        )
+    }),
+    achieved_power = map_dbl(sims, \(s) mean(s$p_value < alpha))
+  ) |>
+  select(n, achieved_power)
 ```
 
 ### Results
 
-<div style="display: flex; align-items: center; justify-content: space-between;">
+<div class="mc-flex center">
 <div style="width: 50%;">
 
 ```{r}
 #| echo: false
-#| eval: false
+#| eval: true
 
-# Create a sample visualization of simulated results
+library(tidyverse)
+
 tibble(
   n = c(10, 15, 20, 25, 30, 35, 40, 45),
   achieved_power = c(0.22, 0.34, 0.46, 0.58, 0.69, 0.76, 0.83, 0.88)
-) %>%
+) |>
   ggplot(aes(x = n, y = achieved_power)) +
-  geom_line(color = "#008000", size = 1.2) +
+  geom_line(color = "#008000", linewidth = 1.2) +
   geom_point(color = "#008000", size = 3) +
-  geom_hline(yintercept = 0.8, linetype = "dashed", color = "#fde74c", size = 1) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "#fde74c", linewidth = 1) +
   annotate("text", x = 20, y = 0.83, label = "Target Power (80%)", color = "#444444") +
-  geom_vline(xintercept = 40, linetype = "dashed", color = "#ff5252", size = 1) +
+  geom_vline(xintercept = 40, linetype = "dashed", color = "#ff5252", linewidth = 1) +
   annotate("text", x = 45, y = 0.5, label = "Required n = 40", color = "#444444") +
   theme_minimal() +
   labs(
@@ -904,13 +973,12 @@ tibble(
 ```
 
 </div>
-<div style="width: 45%; background-color: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid #008000;">
+<div class="mc-box-accent" style="width: 45%;">
 
-**Conclusion:**
-
+Conclusion:
 To detect a correlation of 0.5 with 80% power:
-- Minimum required sample size: **40 participants**
-- With this sample size, we have an 83% chance of detecting the effect if it exists
+
+- Minimum required sample size: 40 participants- With this sample size, we have an 83% chance of detecting the effect if it exists
 - Reliability of our measures (0.8) helps reduce the needed sample size
 - Without Monte Carlo, we might have overestimated the required sample size
 
@@ -925,22 +993,24 @@ To detect a correlation of 0.5 with 80% power:
 
 ### Scenario
 
-<div style="display: flex; justify-content: space-between;">
-<div style="width: 55%; padding-right: 20px;">
+<div class="mc-flex">
+<div class="mc-content" style="width: 55%;">
 
-**Research Question:**  
-What's the smallest correlation between happiness and optimism we can reliably detect with our sample?
+**Question:**
 
-**Fixed Parameters:**
-- Sample size: 40 participants (fixed by budget constraints)
-- Desired power: 0.8 (80%)
+*What's the smallest correlation between happiness and optimism we can reliably detect with our sample?*
+
+Fixed Parameters:
+
+- Sample size: 40 participants (fixed by budget constraints)  
+- Desired power: 0.8 (80%)  
 - Alpha level: 0.05 
-- Factor loading: 0.7 (reliability of measures)
-- Missing data: 5% (expected attrition)
+- Factor loading: 0.7 (reliability of measures)  
+- Missing data: 5% (expected attrition)  
 
 </div>
-<div style="width: 40%; background-color: #f5f5f5; padding: 15px; border-radius: 8px;">
-<h4 style="color: #008000; margin-top: 0;">Monte Carlo Approach</h4>
+<div class="mc-box" style="width: 40%;">
+<h4>Monte Carlo Approach</h4>
 <ol>
 <li>Simulate data with various correlations</li>
 <li>Account for 5% missing data in simulations</li>
@@ -956,77 +1026,49 @@ What's the smallest correlation between happiness and optimism we can reliably d
 #| echo: true
 #| eval: false
 
-minimum_effect_simulation <- function(n, alpha, power, factor_loading, 
-                                     missing_rate, trials = 1000) {
-  results <- tibble(correlation = numeric(), achieved_power = numeric())
-  
-  # Effective sample size after removing missing data
-  effective_n <- floor(n * (1 - missing_rate))
-  
-  # Try correlations from 0.1 to 0.9
-  for(r in seq(0.1, 0.9, by = 0.05)) {
-    significant_tests <- 0
-    
-    # Adjust correlation for measurement error
-    adjusted_r <- r * factor_loading^2
-    
-    # Run multiple trials
-    for(i in 1:trials) {
-      # Generate data with specified correlation
-      data <- MASS::mvrnorm(effective_n, 
-                     mu = c(0, 0), 
-                     Sigma = matrix(c(1, adjusted_r, adjusted_r, 1), 2, 2))
-      
-      data <- as.data.frame(data)
-      names(data) <- c("happiness", "optimism")
-      
-      # Run correlation test
-      test_result <- cor.test(data$happiness, data$optimism)
-      
-      # Count significant results
-      if(test_result$p.value < alpha) {
-        significant_tests <- significant_tests + 1
-      }
-    }
-    
-    # Calculate power
-    achieved_power <- significant_tests / trials
-    
-    # Store results
-    results <- results %>% add_row(correlation = r, achieved_power = achieved_power)
-    
-    # Stop if we've reached our target power
-    if(achieved_power >= power) break
-  }
-  
-  return(results)
-}
+alpha <- 0.05
+trials <- 1000
+effective_n <- floor(40 * (1 - 0.05))
+factor_loading <- 0.7
 
-# Run simulation
-results <- minimum_effect_simulation(n = 40, alpha = 0.05, power = 0.8, 
-                                    factor_loading = 0.7, missing_rate = 0.05)
+results <- tibble(correlation = seq(0.1, 0.9, by = 0.05)) |>
+  mutate(
+    adjusted_r = correlation * factor_loading^2,
+    sims = map(adjusted_r, \(r) {
+      tibble(trial = 1:trials) |>
+        mutate(
+          data = map(trial, \(t) {
+            MASS::mvrnorm(effective_n, mu = c(0, 0),
+                          Sigma = matrix(c(1, r, r, 1), 2, 2)) |>
+              as_tibble(.name_repair = ~c("happiness", "optimism"))
+          }),
+          p_value = map_dbl(data, \(d) cor.test(d$happiness, d$optimism)$p.value)
+        )
+    }),
+    achieved_power = map_dbl(sims, \(s) mean(s$p_value < alpha))
+  ) |>
+  select(correlation, achieved_power)
 ```
 
 ### Results
 
-<div style="display: flex; align-items: center; justify-content: space-between;">
+<div class="mc-flex center">
 <div style="width: 50%;">
 
 ```{r}
 #| echo: false
-#| eval: false
+#| eval: true
 
-# Create a sample visualization of simulated results
 tibble(
   correlation = c(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5),
   achieved_power = c(0.12, 0.18, 0.28, 0.42, 0.58, 0.7, 0.79, 0.88, 0.94)
-) %>%
+) |>
   ggplot(aes(x = correlation, y = achieved_power)) +
-  geom_line(color = "#008000", size = 1.2) +
+  geom_line(color = "#008000", linewidth = 1.2) +
   geom_point(color = "#008000", size = 3) +
-  geom_hline(yintercept = 0.8, linetype = "dashed", color = "#fde74c", size = 1) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "#fde74c", linewidth = 1) +
   annotate("text", x = 0.25, y = 0.83, label = "Target Power (80%)", color = "#444444") +
-  geom_vline(xintercept = 0.4, linetype = "dashed", color = "#ff5252", size = 1) +
+  geom_vline(xintercept = 0.4, linetype = "dashed", color = "#ff5252", linewidth = 1) +
   annotate("text", x = 0.45, y = 0.5, label = "Minimum r = 0.4", color = "#444444") +
   theme_minimal() +
   labs(
@@ -1041,16 +1083,15 @@ tibble(
 ```
 
 </div>
-<div style="width: 45%; background-color: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid #008000;">
+<div class="mc-box" style="width: 40%;">
 
-**Conclusion:**
-
+Conclusion:
 With 40 participants and 5% missing data:
-- We can reliably detect correlations of **r = 0.4 or larger**
-- Smaller correlations (r < 0.4) will be harder to detect
-- The 5% missing data reduces our effective sample size
-- Measurement reliability of 0.7 further attenuates the detectable effect
-- Researchers should focus on effects of at least medium size
+
+- We can reliably detect correlations of r = 0.4 or larger- Smaller correlations (r < 0.4) will be harder to detect  
+- The 5% missing data reduces our effective sample size  
+- Measurement reliability of 0.7 further attenuates the detectable effect  
+- Researchers should focus on effects of at least medium size  
 
 </div>
 </div>
@@ -1063,22 +1104,24 @@ With 40 participants and 5% missing data:
 
 ### Scenario
 
-<div style="display: flex; justify-content: space-between;">
-<div style="width: 55%; padding-right: 20px;">
+<div class="mc-flex">
+<div class="mc-content" style="width: 55%;">
 
-**Research Question:**  
-What is our statistical power to detect a correlation of 0.3 between happiness and optimism?
+**Question:**
 
-**Fixed Parameters:**
-- Sample size: 60 participants (already collected)
-- Alpha level: 0.05
-- Target correlation: 0.3 (small-to-medium effect)
-- Factor loading: 0.62 (measured reliability)
-- Missing data: 10% (actual attrition)
+*What is our statistical power to detect a correlation of 0.3 between happiness and optimism?*
+
+Fixed Parameters:
+
+- Sample size: 60 participants (already collected)  
+- Alpha level: 0.05  
+- Target correlation: 0.3 (small-to-medium effect)  
+- Factor loading: 0.62 (measured reliability)  
+- Missing data: 10% (actual attrition)  
 
 </div>
-<div style="width: 40%; background-color: #f5f5f5; padding: 15px; border-radius: 8px;">
-<h4 style="color: #008000; margin-top: 0;">Monte Carlo Approach</h4>
+<div class="mc-box" style="width: 40%;">
+<h4>Monte Carlo Approach</h4>
 <ol>
 <li>Simulate 1000+ datasets with our parameters</li>
 <li>Apply 10% missing data pattern</li>
@@ -1094,69 +1137,41 @@ What is our statistical power to detect a correlation of 0.3 between happiness a
 #| echo: true
 #| eval: false
 
-power_simulation <- function(n, correlation, alpha, factor_loading, 
-                           missing_rate, trials = 1000) {
-  
-  # Effective sample size after removing missing data
-  effective_n <- floor(n * (1 - missing_rate))
-  
-  # Adjust correlation for measurement error
-  adjusted_r <- correlation * factor_loading^2
-  
-  significant_tests <- 0
-  p_values <- numeric(trials)
-  
-  # Run multiple trials
-  for(i in 1:trials) {
-    # Generate data with specified correlation
-    data <- MASS::mvrnorm(effective_n, 
-                   mu = c(0, 0), 
-                   Sigma = matrix(c(1, adjusted_r, adjusted_r, 1), 2, 2))
-    
-    data <- as.data.frame(data)
-    names(data) <- c("happiness", "optimism")
-    
-    # Run correlation test
-    test_result <- cor.test(data$happiness, data$optimism)
-    
-    # Store p-value
-    p_values[i] <- test_result$p.value
-    
-    # Count significant results
-    if(test_result$p.value < alpha) {
-      significant_tests <- significant_tests + 1
-    }
-  }
-  
-  # Calculate power
-  achieved_power <- significant_tests / trials
-  
-  return(list(power = achieved_power, p_values = p_values))
-}
+alpha <- 0.05
+trials <- 1000
+effective_n <- floor(60 * (1 - 0.10))
+adjusted_r <- 0.3 * 0.62^2
 
-# Run simulation
-results <- power_simulation(n = 60, correlation = 0.3, alpha = 0.05,
-                          factor_loading = 0.62, missing_rate = 0.1)
+results <- tibble(trial = 1:trials) |>
+  mutate(
+    data = map(trial, \(t) {
+      MASS::mvrnorm(effective_n, mu = c(0, 0),
+                    Sigma = matrix(c(1, adjusted_r, adjusted_r, 1), 2, 2)) |>
+        as_tibble(.name_repair = ~c("happiness", "optimism"))
+    }),
+    p_value = map_dbl(data, \(d) cor.test(d$happiness, d$optimism)$p.value)
+  )
+
+achieved_power <- mean(results$p_value < alpha)
 ```
 
 ### Results
 
-<div style="display: flex; align-items: center; justify-content: space-between;">
+<div class="mc-flex center">
 <div style="width: 50%;">
 
 ```{r}
 #| echo: false
-#| eval: false
+#| eval: true
 
-# Create a histogram of simulated p-values
 set.seed(42)
-p_values <- rbeta(1000, 0.5, 3) # Generate p-values that tend to be small but with a tail
+p_values <- rbeta(1000, 0.5, 3)
 p_significant <- sum(p_values < 0.05)
 
-tibble(p_value = p_values) %>%
+tibble(p_value = p_values) |>
   ggplot(aes(x = p_value)) +
   geom_histogram(bins = 30, fill = "#008000", alpha = 0.8) +
-  geom_vline(xintercept = 0.05, linetype = "dashed", color = "#ff5252", size = 1) +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "#ff5252", linewidth = 1) +
   annotate("text", x = 0.07, y = 50, label = "α = 0.05", color = "#444444") +
   annotate("rect", xmin = 0, xmax = 0.05, ymin = 0, ymax = Inf, 
            fill = "#fde74c", alpha = 0.2) +
@@ -1176,12 +1191,12 @@ tibble(p_value = p_values) %>%
 ```
 
 </div>
-<div style="width: 45%; background-color: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid #008000;">
+<div class="mc-box" style="width: 40%;">
 
-**Conclusion:**
-
+Conclusion:
 For our study with 60 participants:
-- Statistical power is approximately **51%** to detect r = 0.3
+
+- Statistical power is approximately 51% to detect r = 0.3
 - This is below the conventional 80% power threshold
 - The 10% missing data significantly reduced our power
 - Measurement reliability (0.62) further attenuated the effect
@@ -1195,33 +1210,218 @@ For our study with 60 participants:
 
 :::
 
+# Monte Carlo in Mplus {background-color="#008000"}
+
+## The Model {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+We want to estimate power for a structural equation model:
+
+- A latent factor F measured by 4 continuous items (x1–x4)
+- F predicts an observed outcome y
+
+**Population Parameters:**
+
+- Factor loadings: .7, 0.8, 0.7, 0.9
+- Regression of y on F: 0.5
+- Factor variance: 1.0
+- Residual variances: 1 - loadings^2 for all items and y
+:::
+
+::: {.column width="50%"}
+::: {.callout-note}
+## The Question
+
+**Question:**
+
+With a sample of n = 40, do we have enough power to detect:
+
+- The regression effect of `F` on `y` (0.3)?
+
+**Answer:**
+
+Mplus can answer this using its built-in `MONTECARLO:` command, no external dataset needed.
+:::
+:::
+:::
+
+
+## The Mplus Monte Carlo Syntax {.smaller}
+
+::: {.panel-tabset}
+
+### Input File
+
+```default
+TITLE:
+Monte Carlo Power Analysis:
+Latent Factor (4 indicators) predicting an observed outcome
+
+MONTECARLO:
+  NAMES = x1-x4 y;
+  NOBSERVATIONS = 40;
+  NREPS = 1000;
+  SEED = 2026;
+
+MODEL POPULATION:
+  f BY x1*.7 x2*.8 x3*.7 x4*.9;
+  f@1;
+  y ON f*.3;
+x1*.51;
+x2*.36;
+x3*.51;
+x4*.19;
+  y*.6;
+
+MODEL:
+  f BY x1* x2 x3 x4;
+  f@1;
+  y ON f*;
+
+OUTPUT: TECH9;
+```
+
+### Key Sections
+
+::: {.callout-note}
+## MONTECARLO:
+
+- `NAMES = x1-x4 y;` — the variables in the simulated datasets
+- `NOBSERVATIONS = 40;` — sample size per replication
+- `NREPS = 1000;` — number of replications (more = more precise power estimate)
+- `SEED = 2026;` — for reproducibility
+:::
+
+::: {.callout-note}
+## MODEL POPULATION:
+
+The true data-generating process. Values after `*` are the population parameters:
+
+- `f BY x1*.7 x2*.8 x3*.7 x4*.9;` factor loadings
+- `f@1;` factor variance fixed at 1
+- `y ON f*.3;` regression coefficient
+- `x1*.51; x2*.36; x3*.51; x4*.19;` residual variances (1 minus loading squared)
+- `y*.6;` residual variance of the outcome
+:::
+
+::: {.callout-note}
+## MODEL:
+
+The analysis model fitted to each simulated dataset. Values after `*` are starting values.
+
+- `f BY x1* x2 x3 x4;` freely estimate all loadings
+- `f@1;` fix factor variance at 1
+- `y ON f*;` freely estimate the regression path
+:::
+
+:::
+
+## Reading the Mplus Output {.smaller}
+
+::: {.panel-tabset}
+
+### Key Output Table
+
+After running, Mplus produces a table like this:
+
+```default
+                           ESTIMATES            S. E.   M. S. E.  95%  % Sig
+              Population   Average   Std. Dev.  Average           Cover Coeff
+ F BY
+  X1             1.000     0.6865     0.1438    0.1411   0.1189   0.401 0.999
+  X2             1.000     0.7856     0.1371    0.1356   0.0648   0.644 0.999
+  X3             1.000     0.6823     0.1480    0.1414   0.1228   0.402 0.996
+  X4             1.000     0.8835     0.1311    0.1301   0.0308   0.823 1.000
+
+ Y ON
+  F              0.000     0.2949     0.1328    0.1313   0.1046   0.379 0.621
+
+ Residual Variances
+  X1             0.500     0.4733     0.1308    0.1235   0.0178   0.884 0.998
+  X2             0.500     0.3376     0.1106    0.1049   0.0386   0.574 0.966
+  X3             0.500     0.4798     0.1319    0.1246   0.0178   0.899 0.999
+  X4             0.500     0.1801     0.1014    0.0970   0.1126   0.134 0.522
+  Y              0.500     0.5697     0.1331    0.1304   0.0226   0.951 1.000
+```
+
+### Interpreting Columns
+
+- **Population** the true parameter value you specified
+- **Average** mean of estimates across 1000 replications (should be close to Population if unbiased)
+- **Std. Dev.** standard deviation of estimates across replications (empirical SE)
+- **S.E. Average** mean of the model-based standard errors (should be close to Std. Dev.)
+- **M.S.E.** mean squared error (combines bias and variance)
+- **95% Cover**  proportion of replications where the 95% CI contains the true value (should be ~0.95)
+- **% Sig Coeff**  proportion of replications where the parameter is significant (p < .05). This is the **power** estimate!
+
+### What Do the Results Tell Us?
+
+With n = 40:
+
+- Regression `y` ON `F`: % Sig ≈ 0.621 (below the 0.80 threshold), and coverage is only 0.379
+
+Conclusion: n = 40 is insufficient to detect the regression effect. We need a larger sample or ?.
+
+:::
+
+## The Monte Carlo Workflow in Mplus {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+1. Specify the population model with the effect sizes you expect
+2. Choose a starting sample size
+3. Run the Monte Carlo simulation
+4. Check the power column for your key parameters
+5. If power < 0.80, increase NOBSERVATIONS
+6. If power > 0.95, consider whether a smaller n would suffice
+7. Repeat until you find the minimum n that gives adequate power
+:::
+
+::: {.column width="50%"}
+::: {.callout-tip}
+## Tips
+
+- Always set NREPS to at least 1000 for stable power estimates
+- Use SEED for reproducibility
+- Check the Cover column — values far from 0.95 suggest model problems
+- Check that Average ≈ Population — large deviations indicate bias
+- The Mplus `.inp` file for this example is available in the `montecarlo/` folder: `power_sem.inp`
+:::
+:::
+:::
+
+# Wrapping Up {background-color="#fde74c"}
+
 ## Monte Carlo for Research Planning: Summary {.smaller}
 
-<div style="display: flex; justify-content: space-between;">
-<div style="width: 60%; padding-right: 20px;">
+<div class="mc-flex">
+<div class="mc-content" style="width: 60%;">
 
-<h3 style="font-size: 1em;">Key Benefits:</h3>
+<h3>Key Benefits:</h3>
 
-<ol style="font-size: 0.8em;">
-<li><strong>Realistic planning</strong>: Accounts for real-world complexities like:
+<ol>
+<li>Realistic planning: Accounts for real-world complexities like:
    <ul>
    <li>Missing data</li>
    <li>Measurement error</li>
    <li>Complex statistical models</li>
    </ul>
 </li>
-<li><strong>Flexibility</strong>: Can simulate any research design and analysis</li>
-<li><strong>Transparency</strong>: Makes assumptions explicit and testable</li>
-<li><strong>Cost-effective</strong>: Optimizes resource allocation before data collection</li>
-<li><strong>Reduced risk</strong>: Identifies potential issues before they happen</li>
+<li>Flexibility: Can simulate any research design and analysis</li>
+<li>Transparency: Makes assumptions explicit and testable</li>
+<li>Cost-effective: Optimizes resource allocation before data collection</li>
+<li>Reduced risk: Identifies potential issues before they happen</li>
 </ol>
 
 </div>
-<div style="width: 35%; background-color: #f5f5f5; padding: 15px; border-radius: 8px;">
+<div class="mc-box" style="width: 35%;">
 
-<h3 style="font-size: 1em;">Practical Workflow:</h3>
+<h3>Practical Workflow:</h3>
 
-<ol style="font-size: 0.8em;">
+<ol>
 <li>Define research questions and hypotheses</li>
 <li>Specify expected parameters and constraints</li>
 <li>Program Monte Carlo simulations</li>
@@ -1234,6 +1434,34 @@ For our study with 60 participants:
 </div>
 </div>
 
-<div style="margin-top: 20px; padding: 15px; background-color: #008000; color: white; border-radius: 8px; text-align: center;">
-<h3 style="margin: 0; color: white; font-size: 0.9em;">The Monte Carlo approach transforms research planning from an educated guess into a data-driven decision process</h3>
+<div class="mc-box-highlight">
+<h3>The Monte Carlo approach transforms research planning from an educated guess into a data-driven decision process</h3>
 </div>
+
+## The Bigger Picture {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+
+What started as a math dispute in 1905 Russia became one of the most important computational methods ever invented:
+
+- Markov showed you can do probability with dependent events
+- Ulam & von Neumann turned it into a tool for solving impossible problems
+- Today it powers everything from drug trials to climate models to AI
+
+:::
+::: {.column width="50%"}
+
+::: {.callout-note}
+## Further Watching
+
+The historical narrative in this lecture draws from the Veritasium video ["The Surprisingly Satisfying Math Behind Markov Chains"](https://www.youtube.com/watch?v=bM5T1HrMKD0) — highly recommended for a deeper dive into the story.
+
+Try the [Markomposition](http://mariechatfield.com/markomposition/) tool to see Markov chains generate text!
+:::
+:::
+:::
+
+. . .
+
+> "It is still an unending source of surprise for me to see how a few scribbles on a blackboard could change the course of human affairs." — Stanislaw Ulam

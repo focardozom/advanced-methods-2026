@@ -1,0 +1,23 @@
+TITLE: Monte Carlo Power Analysis
+  Latent Factor (4 indicators) predicting
+  an observed outcome
+
+MONTECARLO:
+  NAMES ARE x1-x4 y;
+  NOBSERVATIONS = 200;
+  NREPS = 1000;
+  SEED = 2026;
+
+MODEL POPULATION:
+  f BY x1*1 x2*0.8 x3*0.7 x4*0.9;
+  f@1;
+  y ON f*0.5;
+  x1-x4*1;
+  y*1;
+
+MODEL:
+  f BY x1* x2 x3 x4;
+  f@1;
+  y ON f*0.5;
+
+OUTPUT: TECH9;
