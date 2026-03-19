@@ -1,0 +1,111 @@
+/*-- scss:defaults --*/
+
+$um-green: #005030;
+$um-orange: #F47321;
+
+$font-family-sans-serif: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$font-family-monospace: "Fira Code", "Source Code Pro", monospace;
+
+$presentation-font-size-root: 32px;
+$presentation-h1-font-size: 1.6em;
+$presentation-h2-font-size: 1.3em;
+$presentation-h3-font-size: 1.1em;
+
+/*-- scss:rules --*/
+
+.reveal {
+  font-family: $font-family-sans-serif;
+  font-size: $presentation-font-size-root;
+  line-height: 1.4;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  font-family: $font-family-sans-serif;
+  color: $um-green;
+  font-weight: 600;
+}
+
+.reveal .slide-title,
+.reveal .title {
+  color: $um-green;
+}
+
+.reveal .subtitle {
+  color: $um-orange;
+}
+
+.reveal p,
+.reveal li {
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.reveal .smaller p,
+.reveal .smaller li,
+.reveal .smaller table {
+  font-size: 0.75em;
+}
+
+.reveal pre {
+  font-family: $font-family-monospace;
+  font-size: 0.55em;
+  border-left: 3px solid $um-orange;
+  border-radius: 6px;
+}
+
+.reveal code {
+  font-family: $font-family-monospace;
+}
+
+.reveal table {
+  font-size: 0.75em;
+
+  th {
+    background-color: $um-green;
+    color: white;
+    padding: 0.4rem 0.6rem;
+  }
+
+  td {
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+}
+
+.reveal blockquote {
+  border-left: 4px solid $um-orange;
+  padding: 0.5em 1em;
+  font-style: italic;
+  background-color: rgba($um-orange, 0.05);
+  font-size: 0.85em;
+}
+
+.reveal .callout {
+  font-size: 0.8em;
+}
+
+.reveal mark {
+  background-color: rgba($um-orange, 0.25);
+  padding: 0.05em 0.15em;
+  border-radius: 3px;
+  color: inherit;
+}
+
+.reveal section[data-background-color="#F47321"] h1,
+.reveal section[data-background-color="#F47321"] h2,
+.reveal section[data-background-color="#F47321"] h3,
+.reveal section[data-background-color="#F47321"] h4,
+.reveal section[data-background-color="#005030"] h1,
+.reveal section[data-background-color="#005030"] h2,
+.reveal section[data-background-color="#005030"] h3,
+.reveal section[data-background-color="#005030"] h4 {
+  color: white;
+}
+
+.reveal .slide-number {
+  color: $um-green;
+  font-size: 0.6em;
+}
