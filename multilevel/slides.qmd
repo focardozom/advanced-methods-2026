@@ -1,0 +1,2106 @@
+---
+title: "Multilevel Models"
+subtitle: "From Independence Violations to Mixed-Effects and GEE"
+author: "Francisco Cardozo, PhD"
+brand: false
+engine: knitr
+format:
+  revealjs:
+    theme: [simple, slides-styles.scss]
+    logo: "../images/umlogo.png"
+    footer: "EPH 752 Advanced Research Methods"
+    chalkboard: true
+    slide-number: true
+    show-slide-number: all
+    link-external-newwindow: true
+    code-overflow: wrap
+    scrollable: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+#| include: false
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(broom.mixed)
+library(knitr)
+
+set.seed(2026)
+```
+
+# Part I: Independence of Observations {background-color="#005030"}
+
+## A Fundamental Assumption {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Most classical statistical methods, including *t*-tests, ANOVA, and OLS regression, share a core assumption:
+
+$$\text{Cov}(e_i, e_j) = 0 \quad \text{for all } i \neq j$$
+
+Each observation's residual is <mark>unrelated</mark> to every other observation's residual.
+
+This means that knowing one person's score tells you <mark>nothing</mark> about another person's score, beyond what the model already predicts.
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-note}
+## Why Does This Matter?
+
+When independence holds:
+
+- Standard errors are <mark>correct</mark>
+- Confidence intervals have proper <mark>coverage</mark>
+- *p*-values reflect the true <mark>Type I error rate</mark>
+- Statistical tests have the expected <mark>power</mark>
+
+When it doesn't, all of these break down.
+:::
+:::
+::::
+
+## What Independence Looks Like {.smaller}
+
+Consider a simple study: we measure depression scores in 100 individuals randomly sampled from the population.
+
+```{r}
+#| echo: true
+
+set.seed(2026)
+independent_data <- tibble(
+    id = 1:100,
+    depression = rnorm(100, mean = 15, sd = 5)
+)
+
+cor(independent_data$depression[1:50], independent_data$depression[51:100])
+```
+
+The correlation between arbitrary pairs is near zero, and each score is independent of every other.
+
+## The Independence Assumption in Practice {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Independence is plausible when:</mark>
+
+- Participants are randomly and independently sampled
+- No participant influences another
+- No shared environment or grouping structure
+- No repeated measurements on the same unit
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Independence is violated when:</mark>
+
+- Students are nested within classrooms
+- Patients are treated by the same therapist
+- Observations are repeated over time on the same person
+- Family members share a household
+- Employees work in the same organization
+
+:::
+::::
+
+. . .
+
+> In the social, behavioral, and health sciences, truly independent observations are the <mark>exception</mark>, not the rule.
+
+# Part II: Understanding Clustered Data {background-color="#F47321"}
+
+## What Is Clustered Data? {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Clustered data</mark> arises when observations are grouped into higher-level units:
+
+| Level 1 (Observations) | Level 2 (Clusters) |
+|------------------------|--------------------|
+| Students               | Schools            |
+| Patients               | Clinics            |
+| Time points            | Individuals        |
+| Employees              | Organizations      |
+| Trials                 | Participants       |
+
+:::
+
+::: {.column width="50%"}
+
+Observations within the same cluster tend to be <mark>more similar</mark> to each other than observations from different clusters.
+
+This within-cluster similarity is quantified by the <mark>Intraclass Correlation Coefficient (ICC)</mark>:
+
+$$\rho = \frac{\sigma^2_{\text{between}}}{\sigma^2_{\text{between}} + \sigma^2_{\text{within}}}$$
+
+- $\rho = 0$: no clustering effect (observations are independent)
+- $\rho = 1$: all variation is between clusters (observations within a cluster are identical)
+
+:::
+::::
+
+## Simulating Clustered Data {.smaller}
+
+Let's create data where students are nested within 20 schools, with 10 students per school:
+
+```{r}
+#| echo: true
+
+set.seed(2026)
+n_schools <- 20
+n_students <- 10
+
+school_effects <- rnorm(n_schools, mean = 0, sd = 5)
+
+clustered_data <- tibble(
+    school = rep(1:n_schools, each = n_students),
+    school_effect = rep(school_effects, each = n_students),
+    student_error = rnorm(n_schools * n_students, mean = 0, sd = 3),
+    score = 50 + school_effect + student_error
+)
+```
+
+The <mark>school effect</mark> ($\sigma^2_b = 25$) creates dependence among students within the same school. The <mark>student error</mark> ($\sigma^2_w = 9$) represents individual variation.
+
+<mark>True ICC</mark> = $25 / (25 + 9)$ = `r round(25/34, 3)`
+
+## Visualizing the Clustering {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+clustered_data |>
+    mutate(school = factor(school)) |>
+    ggplot(aes(x = school, y = score, color = school)) +
+    geom_jitter(width = 0.15, size = 2, alpha = 0.7) +
+    stat_summary(
+        fun = mean,
+        geom = "point",
+        size = 4,
+        shape = 18,
+        color = "black"
+    ) +
+    geom_hline(yintercept = 50, linetype = "dashed", color = "grey50") +
+    scale_color_manual(values = rep(c("#005030", "#F47321"), 10)) +
+    labs(
+        x = "School",
+        y = "Test Score",
+        title = "Student Scores Clustered Within Schools",
+        subtitle = "Black diamonds = school means; dashed line = grand mean"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+Students within the same school cluster around their school mean. Ignoring this structure leads to incorrect inferences.
+
+## Why Ignoring Clustering Is Dangerous {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>The core problem:</mark> Standard errors depend on sample size. The more <mark>independent</mark> observations you have, the smaller the SE.
+
+But when data is clustered, observations within the same cluster carry <mark>redundant information</mark>. If two students in the same school score similarly because of shared environment, counting them as two fully independent data points <mark>overstates</mark> how much information you actually have.
+
+OLS doesn't know about clustering, so it thinks:
+
+> "I have 200 independent observations, so my SE should be small!"
+
+But the real information content is less than 200. It's as if you had fewer observations.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>The Design Effect</mark> tells you how much redundancy exists:
+
+$$\text{DEFF} = 1 + (m - 1) \times \rho$$
+
+Where $m$ = cluster size and $\rho$ = ICC.
+
+<mark>Example:</mark> 10 schools × 30 students, ICC = 0.25
+
+$$\text{DEFF} = 1 + (30 - 1)(0.25) = 8.25$$
+
+$$N_{\text{effective}} = \frac{300}{8.25} \approx 36$$
+
+OLS thinks you have 300 observations. You effectively have <mark>36</mark>.
+
+Since $SE \propto 1/\sqrt{N}$, the underestimation factor is:
+
+$$\frac{SE_{\text{correct}}}{SE_{\text{OLS}}} = \sqrt{\frac{N}{N_{\text{eff}}}} = \sqrt{\text{DEFF}} = \sqrt{8.25} \approx 2.9$$
+
+The OLS standard error is <mark>2.9× too small</mark>. That means confidence intervals are too narrow, *p*-values are too small, and you reject the null far more often than 5% even when the null is true.
+
+:::
+::::
+
+## A Demonstration: Ignoring Clustering {.smaller}
+
+Let's create a dataset where there is <mark>no treatment effect</mark> ($\beta_1 = 0$) but observations are clustered within 10 schools (30 students each, $N$ = 300). Treatment is assigned at the <mark>school level</mark> (5 schools per condition). We set the ICC to 0.25, the same value from the DEFF example:
+
+```{r}
+#| echo: true
+
+set.seed(2026)
+n_schools_demo <- 10
+n_per_school <- 30
+sigma_u_demo <- sqrt(0.25) # school SD → ICC = 0.25/(0.25+0.75) = 0.25
+sigma_e_demo <- sqrt(0.75) # student SD
+
+school_intercepts <- rnorm(n_schools_demo, 0, sd = sigma_u_demo)
+
+demo_data <- tibble(
+    school = rep(1:n_schools_demo, each = n_per_school),
+    treatment = rep(c(0, 1), each = n_schools_demo / 2 * n_per_school),
+    school_effect = rep(school_intercepts, each = n_per_school),
+    y = 50 +
+        0 * treatment +
+        school_effect +
+        rnorm(n_schools_demo * n_per_school, 0, sd = sigma_e_demo)
+)
+```
+
+The true treatment effect is <mark>exactly zero</mark>. Any "significant" result is a false positive.
+
+## Where Does the False Positive Come From? {.smaller}
+
+Let's look at the school means by treatment group:
+
+```{r}
+#| echo: true
+
+demo_data |>
+    summarise(
+        school_mean = round(mean(y), 2),
+        treatment = first(treatment),
+        .by = school
+    ) |>
+    arrange(treatment, school) |>
+    kable()
+```
+
+. . .
+
+:::: columns
+::: {.column width="50%"}
+
+```{r}
+#| echo: true
+
+demo_data |>
+    summarise(group_mean = round(mean(y), 2), .by = treatment) |>
+    kable()
+```
+
+The group means differ, not because treatment works, but because <mark>different schools</mark> were assigned to each group, and schools have different baseline levels (the random intercepts).
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-warning}
+## The Source of the False Positive
+
+1. Each school got a random intercept ($u_{0j}$) by chance
+2. Treatment was assigned at the school level
+3. The 5 "treatment" schools happened to draw different intercepts than the 5 "control" schools
+4. <mark>OLS sees 300 data points</mark> and computes a tiny SE, small enough that this chance difference looks "significant"
+5. <mark>The mixed model</mark> recognizes these are only 10 schools, gives a larger SE, and correctly fails to reject
+:::
+
+:::
+::::
+
+## OLS vs. Mixed Model: Same Data, Different Conclusions {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Naive OLS</mark> (ignores clustering):
+
+```{r}
+#| echo: true
+
+ols_fit <- lm(y ~ treatment, data = demo_data)
+summary(ols_fit)$coefficients |>
+    round(3) |>
+    kable()
+```
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Mixed model</mark> (accounts for clustering):
+
+```{r}
+#| echo: true
+
+mixed_fit <- lmer(y ~ treatment + (1 | school), data = demo_data)
+summary(mixed_fit)$coefficients |>
+    round(3) |>
+    kable()
+```
+
+:::
+::::
+
+## What Just Happened? {.smaller}
+
+```{r}
+#| echo: true
+
+ols_se <- summary(ols_fit)$coefficients["treatment", "Std. Error"]
+mix_se <- summary(mixed_fit)$coefficients["treatment", "Std. Error"]
+
+tibble(
+    Model = c("OLS (naive)", "Mixed model"),
+    Estimate = c(coef(ols_fit)["treatment"], fixef(mixed_fit)["treatment"]),
+    `Std. Error` = c(ols_se, mix_se),
+    `SE Ratio` = c(1, mix_se / ols_se)
+) |>
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+    kable()
+```
+
+. . .
+
+:::: columns
+::: {.column width="50%"}
+
+The <mark>point estimates</mark> are similar. Both models estimate approximately the same treatment effect.
+
+But the <mark>standard errors</mark> are dramatically different. The mixed model's SE is roughly `r round(mix_se / ols_se, 1)`x larger than OLS.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Does this match the DEFF formula?</mark> We simulated with $\sigma^2_u = 0.25$ and $\sigma^2_e = 0.75$, so the true ICC = 0.25, and cluster size $m$ = `r n_per_school`, the same values from the earlier slide:
+
+```{r}
+#| echo: true
+
+true_icc <- 0.25
+deff <- 1 + (n_per_school - 1) * true_icc
+cat(
+    "DEFF =",
+    round(deff, 2),
+    "\n√DEFF =",
+    round(sqrt(deff), 2),
+    "\nObserved SE ratio =",
+    round(mix_se / ols_se, 2)
+)
+```
+
+The observed ratio is close to $\sqrt{\text{DEFF}} = \sqrt{8.25} \approx 2.9$. The formula and the model agree.
+
+:::
+::::
+
+## How Often Does OLS Get It Wrong? {.smaller}
+
+Let's repeat this 1,000 times. Each time the true effect is zero, and we count how often each method falsely rejects:
+
+```{r}
+#| echo: true
+#| cache: true
+
+set.seed(2026)
+n_sims <- 1000
+
+sim_results <- map_dfr(1:n_sims, \(i) {
+    school_eff <- rnorm(n_schools_demo, 0, sd = sigma_u_demo)
+    d <- tibble(
+        school = rep(1:n_schools_demo, each = n_per_school),
+        treatment = rep(c(0, 1), each = n_schools_demo / 2 * n_per_school),
+        y = 50 +
+            rep(school_eff, each = n_per_school) +
+            rnorm(n_schools_demo * n_per_school, 0, sd = sigma_e_demo)
+    )
+    p_ols <- summary(lm(y ~ treatment, data = d))$coefficients[2, 4]
+    p_mix <- summary(lmer(y ~ treatment + (1 | school), data = d))$coefficients[
+        2,
+        5
+    ]
+    tibble(p_ols, p_mix)
+})
+```
+
+```{r}
+#| echo: true
+
+tibble(
+    Model = c("OLS (naive)", "Mixed model"),
+    `Type I Error Rate` = c(
+        mean(sim_results$p_ols < 0.05),
+        mean(sim_results$p_mix < 0.05)
+    ),
+    `Expected` = c(0.05, 0.05)
+) |>
+    kable()
+```
+
+. . .
+
+> OLS falsely rejects far more than 5% of the time. The mixed model stays close to the nominal rate.
+
+## Visualizing the Inflation {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+sim_results |>
+    pivot_longer(everything(), names_to = "Model", values_to = "p_value") |>
+    mutate(Model = ifelse(Model == "p_ols", "OLS (naive)", "Mixed model")) |>
+    ggplot(aes(x = p_value, fill = Model)) +
+    geom_histogram(bins = 40, alpha = 0.7, position = "identity") +
+    geom_vline(
+        xintercept = 0.05,
+        linetype = "dashed",
+        color = "red",
+        linewidth = 1
+    ) +
+    facet_wrap(~Model) +
+    scale_fill_manual(
+        values = c("OLS (naive)" = "#F47321", "Mixed model" = "#005030")
+    ) +
+    labs(
+        x = "p-value",
+        y = "Frequency",
+        title = "Distribution of p-values Under the Null (True Effect = 0)",
+        subtitle = "Red dashed line = α = 0.05"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+Under the null, p-values should be <mark>uniformly distributed</mark>. OLS produces a spike near zero (too many false positives). The mixed model produces the expected uniform distribution.
+
+## The Core Insight {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>What standard regression assumes:</mark>
+
+$$y_i = \beta_0 + \beta_1 x_i + e_i$$
+
+All observations are exchangeable. The only source of variation is individual-level error $e_i$.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>What the data actually looks like:</mark>
+
+$$y_{ij} = \beta_0 + \beta_1 x_{ij} + u_j + e_{ij}$$
+
+Observations $i$ are nested within clusters $j$. There are <mark>two</mark> sources of variation:
+
+- $u_j$: cluster-level variation (between)
+- $e_{ij}$: individual-level variation (within)
+
+:::
+::::
+
+. . .
+
+> We need models that <mark>acknowledge</mark> this hierarchical structure. That's where mixed-effects models come in.
+
+# Part III: Mixed-Effects Models {background-color="#005030"}
+
+## The Mixed-Effects Framework {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+A <mark>mixed-effects model</mark> (also called a multilevel, hierarchical, or random-effects model) contains two types of effects:
+
+- <mark>Fixed effects</mark>: parameters that are constant across all clusters (like a regular regression coefficient)
+- <mark>Random effects</mark>: parameters that <mark>vary</mark> across clusters, drawn from a distribution
+
+The simplest mixed model adds a <mark>random intercept</mark>:
+
+$$y_{ij} = \underbrace{\beta_0 + \beta_1 x_{ij}}_{\text{fixed}} + \underbrace{u_{0j}}_{\text{random}} + e_{ij}$$
+
+where $u_{0j} \sim N(0, \sigma^2_u)$ and $e_{ij} \sim N(0, \sigma^2_e)$
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## Intuition
+
+Think of the random intercept as saying: *each cluster has its own baseline level*, and these baselines are drawn from a normal distribution.
+
+- A community with $u_{0j} > 0$ has higher-than-average risk
+- A community with $u_{0j} < 0$ has lower-than-average risk
+- The <mark>variance</mark> $\sigma^2_u$ tells us how much clusters differ
+:::
+
+:::
+::::
+
+## Let's See It with Data {.smaller}
+
+Imagine a prevention study: <mark>5 communities</mark> each have <mark>4 schools</mark> that implement a substance use prevention program. We measure the risk behavior score at each school after the program.
+
+```{r}
+#| echo: true
+
+prevention_data <- tibble(
+    community = rep(paste("Community", LETTERS[1:5]), each = 4),
+    school = 1:20,
+    risk_score = c(
+        42,
+        47,
+        39,
+        44, # Community A - cluster mean ≈ 43
+        31,
+        28,
+        35,
+        30, # Community B - cluster mean ≈ 31
+        55,
+        58,
+        51,
+        60, # Community C - cluster mean ≈ 56
+        38,
+        41,
+        36,
+        33, # Community D - cluster mean ≈ 37
+        48,
+        52,
+        45,
+        51 # Community E - cluster mean ≈ 49
+    )
+)
+```
+
+The scores <mark>within</mark> the same community are more similar to each other than scores from different communities. That's the clustering.
+
+## Look at the Data {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 4.5
+
+ggplot(prevention_data, aes(x = community, y = risk_score, color = community)) +
+    geom_jitter(width = 0.1, size = 3, alpha = 0.8) +
+    stat_summary(
+        fun = mean,
+        geom = "point",
+        size = 5,
+        shape = 18,
+        color = "black"
+    ) +
+    geom_hline(
+        yintercept = mean(prevention_data$risk_score),
+        linetype = "dashed",
+        color = "grey50"
+    ) +
+    annotate(
+        "text",
+        x = 5.4,
+        y = mean(prevention_data$risk_score) + 1.5,
+        label = paste0(
+            "Grand mean = ",
+            round(mean(prevention_data$risk_score), 1)
+        ),
+        color = "grey40",
+        size = 4
+    ) +
+    scale_color_manual(
+        values = c("#005030", "#F47321", "#003366", "#8B1A1A", "#6A0DAD")
+    ) +
+    labs(
+        x = "",
+        y = "Risk Behavior Score",
+        title = "School Risk Scores by Community"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+The black diamonds are community means. Some communities' schools report higher risk, others lower. That <mark>between-community</mark> variation is what a random effect captures.
+
+## Two Sources of Variation {.smaller}
+
+Every school's score can be decomposed:
+
+$$\text{risk}_{ij} = \underbrace{\text{grand mean}}_{\beta_0} + \underbrace{\text{community deviation}}_{{u_{0j}}} + \underbrace{\text{school deviation}}_{e_{ij}}$$
+
+Let's compute this by hand:
+
+```{r}
+#| echo: true
+
+prevention_summary <- prevention_data |>
+    mutate(grand_mean = mean(risk_score)) |>
+    summarise(
+        community_mean = mean(risk_score),
+        grand_mean = first(grand_mean),
+        community_deviation = community_mean - grand_mean,
+        n = n(),
+        .by = community
+    )
+
+prevention_summary |>
+    mutate(across(where(is.numeric), ~ round(.x, 1))) |>
+    kable()
+```
+
+The <mark>community deviation</mark> ($u_{0j}$) is how far each community's mean is from the grand mean. This is the random effect.
+
+## Partitioning the Variance {.smaller}
+
+Now let's quantify the two variance components:
+
+```{r}
+#| echo: true
+
+grand_mean <- mean(prevention_data$risk_score)
+
+between_variance <- prevention_data |>
+    summarise(community_mean = mean(risk_score), .by = community) |>
+    summarise(var_between = var(community_mean)) |>
+    pull(var_between)
+
+within_variance <- prevention_data |>
+    mutate(community_mean = mean(risk_score), .by = community) |>
+    mutate(deviation = risk_score - community_mean) |>
+    summarise(var_within = var(deviation)) |>
+    pull(var_within)
+
+tibble(
+    Component = c(
+        "Between communities (σ²_u)",
+        "Within communities (σ²_e)",
+        "Total"
+    ),
+    Variance = c(
+        between_variance,
+        within_variance,
+        between_variance + within_variance
+    )
+) |>
+    mutate(
+        Percent = round(
+            Variance / sum(head(Variance, 2)) * c(1, 1, 1) * 100,
+            1
+        ),
+        Variance = round(Variance, 2)
+    ) |>
+    kable()
+```
+
+. . .
+
+Most of the variance is <mark>between</mark> communities. Schools within the same community have similar risk levels.
+
+## Fitting the Empty Model {.smaller}
+
+Now let's let `lmer` estimate these variance components formally:
+
+```{r}
+#| echo: true
+
+empty_model <- lmer(risk_score ~ 1 + (1 | community), data = prevention_data)
+summary(empty_model)
+```
+
+## Reading the Output {.smaller}
+
+```{r}
+#| echo: true
+
+vc <- as.data.frame(VarCorr(empty_model))
+```
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>The model estimated:</mark>
+
+```{r}
+#| echo: true
+
+tibble(
+    Component = c("Between (σ²_u)", "Within (σ²_e)"),
+    Variance = round(vc$vcov, 2),
+    SD = round(vc$sdcor, 2)
+) |>
+    kable()
+```
+
+- $\hat{\sigma}^2_u$ = `r round(vc$vcov[1], 2)`, variance <mark>between</mark> communities
+- $\hat{\sigma}^2_e$ = `r round(vc$vcov[2], 2)`, variance <mark>within</mark> communities (between schools in the same community)
+
+:::
+
+::: {.column width="50%"}
+
+<mark>The fixed effect:</mark>
+
+```{r}
+#| echo: true
+
+fixef(empty_model)
+```
+
+This is the grand mean, the overall average risk score across all communities and schools.
+
+<mark>The random effects (BLUPs):</mark>
+
+```{r}
+#| echo: true
+
+ranef(empty_model)$community |>
+    mutate(across(everything(), ~ round(.x, 2)))
+```
+
+These are the estimated $u_{0j}$, each community's deviation from the grand mean.
+
+:::
+::::
+
+## From Variance Components to the ICC {.smaller}
+
+The <mark>Intraclass Correlation Coefficient</mark> is simply the proportion of total variance that is between clusters:
+
+$$\text{ICC} = \frac{\sigma^2_u}{\sigma^2_u + \sigma^2_e} = \frac{\text{between-community variance}}{\text{total variance}}$$
+
+```{r}
+#| echo: true
+
+icc_value <- vc$vcov[1] / sum(vc$vcov)
+cat("ICC =", round(icc_value, 3))
+```
+
+. . .
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>What this means:</mark>
+
+- `r round(icc_value * 100)`% of the total variation in risk scores is due to differences <mark>between</mark> communities
+- `r round((1 - icc_value) * 100)`% is due to differences <mark>between schools</mark> within the same community
+- Schools in the same community have much more similar risk levels than schools in different communities
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## The ICC Is the Reason We Need Mixed Models
+
+If ICC = 0, there is no clustering; all communities have similar risk levels and OLS is fine.
+
+As ICC increases, observations within clusters become more dependent, and ignoring this leads to <mark>underestimated standard errors</mark> and <mark>inflated Type I error</mark>.
+:::
+
+:::
+::::
+
+## ICC, R², and the F-Ratio: One Family {.smaller}
+
+The ICC might look new, but it belongs to a family of statistics you already know, all based on the same idea: <mark>partitioning variance</mark>.
+
+:::: columns
+::: {.column width="50%"}
+
+| Statistic | Question It Answers |
+|-----------|-------------------|
+| **R²** | How much variance in $y$ is explained by the **predictor** $x$? |
+| **F-ratio** | Is the variance **between groups** large relative to the variance **within groups**? |
+| **ICC** | What proportion of total variance is **between clusters**? |
+
+All three decompose total variance into "signal" and "noise"; they just define those terms differently.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## The Common Thread
+
+$$\text{Total Variance} = \text{Explained (between)} + \text{Unexplained (within)}$$
+
+- <mark>R²</mark> = $\frac{SS_{\text{regression}}}{SS_{\text{total}}}$, proportion explained by predictors
+- <mark>F</mark> = $\frac{MS_{\text{between}}}{MS_{\text{within}}}$, ratio of between to within
+- <mark>ICC</mark> = $\frac{\sigma^2_u}{\sigma^2_u + \sigma^2_e}$, proportion due to clustering
+
+They are different lenses on the same fundamental operation.
+:::
+:::
+::::
+
+## Connecting Them with Our Data {.smaller}
+
+Let's compute all three on the prevention data and see how they relate:
+
+```{r}
+#| echo: true
+
+anova_model <- aov(risk_score ~ community, data = prevention_data)
+anova_table <- summary(anova_model)[[1]]
+anova_table
+```
+
+```{r}
+#| echo: true
+
+f_ratio <- anova_table$`F value`[1]
+r_squared <- anova_table$`Sum Sq`[1] / sum(anova_table$`Sum Sq`)
+
+tibble(
+    Statistic = c("R² (from ANOVA)", "F-ratio", "ICC (from lmer)"),
+    Value = round(c(r_squared, f_ratio, icc_value), 3),
+    Interpretation = c(
+        paste0(
+            round(r_squared * 100, 1),
+            "% of variance explained by community"
+        ),
+        paste0(
+            "Between-group MS is ",
+            round(f_ratio, 1),
+            "x the within-group MS"
+        ),
+        paste0(
+            round(icc_value * 100, 1),
+            "% of variance is between communities"
+        )
+    )
+) |>
+    kable()
+```
+
+## How They Relate {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>R² and ICC ask a similar question</mark>, what proportion of variance is between groups, but they answer it differently.
+
+<mark>R²</mark> uses raw sums of squares:
+
+$$R^2 = \frac{SS_{\text{between}}}{SS_{\text{total}}}$$
+
+The problem: $SS_{\text{between}}$ reflects the observed spread of group means, but those means are <mark>noisy estimates</mark>. With only 4 schools per community, each mean carries sampling error. So $SS_{\text{between}}$ is inflated by within-group noise leaking into the group means.
+
+<mark>ICC</mark> uses REML variance components that <mark>correct</mark> for this:
+
+$$\hat{\sigma}^2_u = \frac{MS_{\text{between}} - MS_{\text{within}}}{n_j}$$
+
+It subtracts out the within-group mean square before computing between-cluster variance. R² tends to <mark>overestimate</mark> the between-cluster proportion, especially with small clusters. As cluster size grows, the correction becomes negligible and R² $\to$ ICC.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>The F-ratio tells the same story as a ratio</mark> instead of a proportion:
+
+- $F \approx 1$: between-group variance $\approx$ within-group variance → no clustering
+- $F \gg 1$: between-group variance dominates → strong clustering
+
+You can recover the ICC from the F-ratio of a one-way ANOVA:
+
+$$\text{ICC} \approx \frac{F - 1}{F - 1 + n_j}$$
+
+where $n_j$ is the cluster size.
+
+| | R² (ANOVA) | ICC (lmer) |
+|---|---|---|
+| **Uses** | Raw sums of squares | REML variance components |
+| **Corrects for** | Nothing | Sampling error in group means |
+| **Type** | Sample descriptive | Population parameter estimate |
+| **Bias** | Overestimates with small clusters | Unbiased |
+
+::: {.callout-note}
+## The Bottom Line
+If you understand R² and the F-ratio, you already understand the ICC. It's the same variance decomposition; the ICC just does it more carefully by accounting for the fact that group means are themselves estimated with error.
+:::
+
+:::
+::::
+
+## Putting It All Together {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+re_vals <- ranef(empty_model)$community |>
+    rownames_to_column("community") |>
+    rename(u0 = `(Intercept)`)
+
+community_levels <- sort(unique(prevention_data$community))
+
+plot_data <- prevention_data |>
+    left_join(re_vals, by = "community") |>
+    mutate(
+        grand_mean = fixef(empty_model)[1],
+        community_pred = grand_mean + u0,
+        x_num = as.numeric(factor(community, levels = community_levels))
+    )
+
+gm <- fixef(empty_model)[1]
+
+ggplot(plot_data, aes(x = x_num)) +
+    geom_hline(
+        yintercept = gm,
+        linewidth = 1.2,
+        linetype = "dashed",
+        color = "grey50"
+    ) +
+    annotate(
+        "text",
+        x = 0.6,
+        y = gm + 1.8,
+        label = paste0("beta_0 = ", round(gm, 1), " (grand mean)"),
+        hjust = 0,
+        color = "grey40",
+        size = 4,
+        fontface = "bold"
+    ) +
+    geom_segment(
+        aes(xend = x_num, y = grand_mean, yend = community_pred),
+        color = "#F47321",
+        linewidth = 1.5,
+        alpha = 0.6,
+        arrow = arrow(length = unit(0.15, "cm"))
+    ) +
+    geom_point(
+        aes(y = community_pred),
+        size = 5,
+        shape = 18,
+        color = "#F47321"
+    ) +
+    geom_jitter(
+        aes(y = risk_score),
+        width = 0.08,
+        size = 2.5,
+        alpha = 0.5,
+        color = "#005030"
+    ) +
+    geom_segment(
+        aes(xend = x_num, y = community_pred, yend = risk_score),
+        alpha = 0.15,
+        color = "#005030"
+    ) +
+    annotate(
+        "label",
+        x = 5,
+        y = 27,
+        label = paste0(
+            "Orange arrows = u0j (random effects)\n",
+            "Green dots = individual schools\n",
+            "Green lines = eij (residuals)"
+        ),
+        size = 3.5,
+        hjust = 1,
+        fill = "white",
+        label.size = 0.3
+    ) +
+    scale_x_continuous(breaks = 1:5, labels = community_levels) +
+    labs(
+        x = "",
+        y = "Risk Behavior Score",
+        title = "Anatomy of a Mixed Model",
+        subtitle = paste0(
+            "ICC = ",
+            round(icc_value, 2),
+            " - ",
+            round(icc_value * 100),
+            "% of variance is between communities"
+        )
+    ) +
+    theme_minimal(base_size = 14)
+```
+
+The <mark>grand mean</mark> ($\beta_0$) is the fixed effect. The <mark>orange arrows</mark> ($u_{0j}$) are the random effects, showing how far each community deviates. The <mark>green lines</mark> ($e_{ij}$) are individual school residuals.
+
+## What Are Random Effects? {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Now we can answer precisely:
+
+<mark>Fixed effects</mark> answer: *What is the average effect of $x$ on $y$ across all clusters?*
+
+<mark>Random effects</mark> answer: *How much do clusters vary around that average?*
+
+| | Fixed Effects | Random Effects |
+|---|---|---|
+| **Estimated** | Point estimates ($\hat{\beta}$) | Variance components ($\hat{\sigma}^2_u$) |
+| **Interpretation** | Average relationship | Variability across clusters |
+| **Inference** | About the specific predictors | About the population of clusters |
+| **Assumption** | Same for all clusters | Drawn from a distribution |
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-note}
+## When to Use Random Effects
+
+Use a random effect when:
+
+1. Your clusters are a <mark>sample</mark> from a larger population (schools, therapists, participants)
+2. You want to <mark>generalize</mark> beyond the observed clusters
+3. You want to <mark>account for</mark> within-cluster correlation
+4. You have enough clusters (typically $\geq$ 20)
+
+Use fixed effects for clusters when:
+
+1. You have a small, exhaustive set (e.g., 3 treatment conditions)
+2. You are interested in the <mark>specific</mark> cluster differences
+:::
+:::
+::::
+
+## Fixed-Effects vs. Mixed Models: Generalizability {.smaller}
+
+There is an important distinction between treating clusters as <mark>fixed</mark> versus <mark>random</mark> that goes beyond estimation; it changes what your results *mean*.
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Fixed-effects model</mark> (clusters as dummies):
+
+$$y_{ij} = \beta_0 + \beta_1 x_{ij} + \gamma_2 D_{2j} + \gamma_3 D_{3j} + \cdots + e_{ij}$$
+
+- Estimates a <mark>separate parameter</mark> for each cluster
+- Conclusions are limited to <mark>these specific clusters</mark>
+- No distributional assumption about cluster effects
+- Cannot predict outcomes for a <mark>new</mark> cluster
+
+> "Community B's schools score 12 points lower than Community A's."
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Mixed model</mark> (clusters as random):
+
+$$y_{ij} = \beta_0 + \beta_1 x_{ij} + u_{0j} + e_{ij}, \quad u_{0j} \sim N(0, \sigma^2_u)$$
+
+- Estimates a <mark>variance component</mark>, how much clusters vary in general
+- Conclusions generalize to the <mark>population</mark> of clusters
+- Assumes cluster effects follow a distribution
+- Can predict outcomes for a <mark>new</mark>, unobserved cluster (via the distribution)
+
+> "Communities vary with $\sigma_u$ = 10; a new community's schools will likely fall within that range."
+
+:::
+::::
+
+## The Generalizability Trade-Off {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+| | Fixed Effects | Mixed (Random) Effects |
+|---|---|---|
+| **Clusters are** | Specific, known, exhaustive | A sample from a larger population |
+| **Inference to** | Only these clusters | The population of all clusters |
+| **External validity** | Low, results are cluster-specific | High, results generalize |
+| **New cluster?** | Cannot predict | Can predict (from $\hat{\sigma}^2_u$) |
+| **Example** | 3 specific drug doses | 30 schools sampled from a district |
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## Why This Matters
+
+Suppose you study the effect of a tutoring program across 25 schools.
+
+<mark>Fixed-effects approach:</mark> "The program worked in School 3 and School 17, but not in School 8." Your conclusions apply to *these 25 schools only*.
+
+<mark>Mixed-effects approach:</mark> "The program increases scores by 5 points on average, with $\sigma_u$ = 3 across schools." Your conclusions apply to *any similar school*, including ones you didn't study.
+
+If you want to inform <mark>policy</mark>, whether to scale the program to new schools, the mixed model gives you the evidence you need.
+:::
+
+:::
+::::
+
+## When Fixed Effects Make Sense {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Fixed-effects models for clusters are not wrong; they answer a different question. Use them when:
+
+- You have a <mark>small, exhaustive set</mark> of clusters (e.g., 2 treatment conditions, 4 regions of a country)
+- You are interested in <mark>specific cluster contrasts</mark> ("Is School A better than School B?")
+- You want to <mark>control for</mark> all unobserved cluster-level confounders (fixed effects absorb everything constant within a cluster)
+- You have <mark>too few clusters</mark> for reliable variance estimation (e.g., < 10)
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## A Practical Heuristic
+
+Ask yourself: *If I repeated this study, would I use the same clusters?*
+
+- <mark>Yes</mark> (same 3 hospitals, same 2 treatments) → Fixed effects
+- <mark>No</mark> (I'd sample new schools, new therapists, new participants) → Random effects
+
+The answer determines whether your clusters are part of the research question or part of the sampling design.
+:::
+
+::: {.callout-note}
+## Note on Terminology
+
+In econometrics, "fixed effects" often refers specifically to cluster-level dummy variables used to eliminate between-cluster confounding. In the mixed-models tradition, "fixed effects" simply means non-varying parameters (like $\beta_1$). Be aware of the audience when using these terms.
+:::
+
+:::
+::::
+
+## Random Intercepts: Visualized {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+set.seed(2026)
+n_clusters_viz <- 8
+n_obs <- 15
+beta0 <- 5
+beta1 <- 0.8
+sigma_u <- 3
+sigma_e <- 2
+
+viz_data <- tibble(
+    cluster = rep(1:n_clusters_viz, each = n_obs),
+    u0 = rep(rnorm(n_clusters_viz, 0, sigma_u), each = n_obs),
+    x = runif(n_clusters_viz * n_obs, 0, 10),
+    y = beta0 + u0 + beta1 * x + rnorm(n_clusters_viz * n_obs, 0, sigma_e)
+) |>
+    mutate(cluster = factor(cluster))
+
+ggplot(viz_data, aes(x = x, y = y, color = cluster)) +
+    geom_point(alpha = 0.5, size = 2) +
+    geom_smooth(method = "lm", se = FALSE, linewidth = 1) +
+    geom_abline(
+        intercept = beta0,
+        slope = beta1,
+        linewidth = 1.5,
+        linetype = "dashed",
+        color = "black"
+    ) +
+    annotate(
+        "text",
+        x = 8.5,
+        y = beta0 + beta1 * 8.5 + 2,
+        label = "Overall (fixed)",
+        fontface = "bold",
+        size = 4.5
+    ) +
+    scale_color_brewer(palette = "Set2") +
+    labs(
+        x = "Predictor (x)",
+        y = "Outcome (y)",
+        title = "Random Intercepts Model",
+        subtitle = "Each cluster has its own intercept; slopes are the same",
+        color = "Cluster"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "right")
+```
+
+All clusters share the <mark>same slope</mark> ($\beta_1$), but each has its own <mark>intercept</mark> ($\beta_0 + u_{0j}$).
+
+## Random Slopes {.smaller}
+
+We can also allow the <mark>effect of a predictor</mark> to vary across clusters:
+
+$$y_{ij} = \beta_0 + \beta_1 x_{ij} + u_{0j} + u_{1j} x_{ij} + e_{ij}$$
+
+where:
+
+$$\begin{pmatrix} u_{0j} \\ u_{1j} \end{pmatrix} \sim N\left(\begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} \sigma^2_{u_0} & \sigma_{u_{01}} \\ \sigma_{u_{01}} & \sigma^2_{u_1} \end{pmatrix}\right)$$
+
+- $u_{0j}$: cluster-specific deviation in the intercept
+- $u_{1j}$: cluster-specific deviation in the slope
+- $\sigma_{u_{01}}$: covariance between random intercept and slope
+
+## Random Slopes: Visualized {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5.5
+
+set.seed(2026)
+sigma_u1 <- 0.4
+slopes_data <- tibble(
+    cluster = rep(1:n_clusters_viz, each = n_obs),
+    u0 = rep(rnorm(n_clusters_viz, 0, sigma_u), each = n_obs),
+    u1 = rep(rnorm(n_clusters_viz, 0, sigma_u1), each = n_obs),
+    x = runif(n_clusters_viz * n_obs, 0, 10),
+    y = beta0 +
+        u0 +
+        (beta1 + u1) * x +
+        rnorm(n_clusters_viz * n_obs, 0, sigma_e)
+) |>
+    mutate(cluster = factor(cluster))
+
+ggplot(slopes_data, aes(x = x, y = y, color = cluster)) +
+    geom_point(alpha = 0.5, size = 2) +
+    geom_smooth(method = "lm", se = FALSE, linewidth = 1) +
+    geom_abline(
+        intercept = beta0,
+        slope = beta1,
+        linewidth = 1.5,
+        linetype = "dashed",
+        color = "black"
+    ) +
+    annotate(
+        "text",
+        x = 8.5,
+        y = beta0 + beta1 * 8.5 + 2,
+        label = "Overall (fixed)",
+        fontface = "bold",
+        size = 4.5
+    ) +
+    scale_color_brewer(palette = "Set2") +
+    labs(
+        x = "Predictor (x)",
+        y = "Outcome (y)",
+        title = "Random Intercepts and Slopes Model",
+        subtitle = "Each cluster has its own intercept AND slope",
+        color = "Cluster"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "right")
+```
+
+Now both the <mark>intercepts</mark> and the <mark>slopes</mark> vary across clusters. The black dashed line represents the average (fixed) relationship.
+
+## Building Up Mixed Models {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+| Model | Formula | Allows |
+|-------|---------|--------|
+| **Empty model** | $y_{ij} = \beta_0 + u_{0j} + e_{ij}$ | Decompose total variance |
+| **Random intercept** | $y_{ij} = \beta_0 + \beta_1 x_{ij} + u_{0j} + e_{ij}$ | Cluster-varying baselines |
+| **Random slope** | $y_{ij} = \beta_0 + \beta_1 x_{ij} + u_{0j} + u_{1j}x_{ij} + e_{ij}$ | Cluster-varying effects |
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Typical workflow:</mark>
+
+1. Fit the <mark>empty model</mark> to estimate the ICC
+2. Add <mark>fixed effects</mark> (predictors)
+3. Test <mark>random slopes</mark> for key predictors
+4. Compare models using likelihood ratio tests or information criteria (AIC, BIC)
+5. Interpret fixed effects and variance components
+
+:::
+::::
+
+# Part IV: Time in Mixed Models {background-color="#F47321"}
+
+## Longitudinal Data as Multilevel Data {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Longitudinal (repeated-measures) data is a special case of multilevel data:
+
+| Level 1 | Level 2 |
+|---------|---------|
+| Time points | Individuals |
+
+Each person is a "cluster" of their own repeated observations. Observations within a person are correlated, which is exactly the clustering problem we discussed.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## A Key Decision
+
+In mixed models for longitudinal data, <mark>how you treat time</mark> matters enormously:
+
+- <mark>Time as categorical</mark>: each wave gets its own mean (no functional form assumed)
+- <mark>Time as continuous</mark>: assumes a specific trajectory (linear, quadratic, etc.)
+
+This decision affects model flexibility, parsimony, and interpretation.
+:::
+:::
+::::
+
+## Time as a Categorical Variable {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+When time is treated as a <mark>factor</mark> (dummy-coded or effect-coded), the model estimates a <mark>separate mean</mark> for each time point:
+
+$$y_{ij} = \beta_0 + \beta_1 D_{2ij} + \beta_2 D_{3ij} + \beta_3 D_{4ij} + u_{0j} + e_{ij}$$
+
+where $D_k$ are dummy variables for each time point after the first.
+
+<mark>Advantages:</mark>
+
+- No assumption about the shape of change
+- Captures non-linear, non-monotonic patterns
+- Good for designs with few, irregularly spaced waves
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Disadvantages:</mark>
+
+- Uses more degrees of freedom ($k - 1$ parameters for $k$ time points)
+- Cannot easily extrapolate beyond observed time points
+- Harder to summarize "rate of change"
+- Not practical with many time points
+
+::: {.callout-note}
+## When to Use Categorical Time
+
+- You have $\leq$ 5 time points
+- You suspect non-linear change but don't know the form
+- The spacing between waves is uneven or the specific waves matter substantively
+:::
+:::
+::::
+
+## Time as a Continuous Variable {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+When time is treated as <mark>continuous</mark>, the model assumes a specific functional form for change:
+
+<mark>Linear growth:</mark>
+
+$$y_{ij} = \beta_0 + \beta_1 \text{time}_{ij} + u_{0j} + u_{1j}\text{time}_{ij} + e_{ij}$$
+
+<mark>Quadratic growth:</mark>
+
+$$y_{ij} = \beta_0 + \beta_1 \text{time}_{ij} + \beta_2 \text{time}_{ij}^2 + u_{0j} + u_{1j}\text{time}_{ij} + e_{ij}$$
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Advantages:</mark>
+
+- Parsimonious (fewer parameters)
+- Interpretable rate of change ($\beta_1$)
+- Can model participants with different numbers of time points
+- Handles unequally spaced observations naturally
+
+<mark>Disadvantages:</mark>
+
+- Assumes a specific trajectory shape
+- Misspecification can bias results
+
+::: {.callout-tip}
+## When to Use Continuous Time
+
+- You have many time points ($\geq$ 5)
+- Change is expected to be smooth
+- You want to estimate individual growth trajectories
+- Observations are unequally spaced
+:::
+:::
+::::
+
+## Comparing the Two Approaches {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+set.seed(42)
+n_ppl <- 6
+times <- c(0, 3, 6, 12)
+n_times <- length(times)
+
+long_data <- tibble(
+    id = rep(1:n_ppl, each = n_times),
+    time = rep(times, n_ppl),
+    u0 = rep(rnorm(n_ppl, 0, 3), each = n_times),
+    u1 = rep(rnorm(n_ppl, 0, 0.3), each = n_times),
+    y = 20 +
+        u0 +
+        (0.5 + u1) * time -
+        0.02 * time^2 +
+        rnorm(n_ppl * n_times, 0, 2)
+) |>
+    mutate(
+        id = factor(id),
+        time_cat = factor(time, labels = paste0("Wave ", 1:4))
+    )
+
+p1 <- ggplot(long_data, aes(x = time_cat, y = y, group = id, color = id)) +
+    geom_point(size = 2) +
+    geom_line(alpha = 0.6) +
+    stat_summary(
+        aes(group = 1),
+        fun = mean,
+        geom = "line",
+        color = "black",
+        linewidth = 1.5,
+        linetype = "dashed"
+    ) +
+    stat_summary(
+        aes(group = 1),
+        fun = mean,
+        geom = "point",
+        color = "black",
+        size = 3
+    ) +
+    scale_color_brewer(palette = "Set2") +
+    labs(
+        x = "Time (categorical)",
+        y = "Outcome",
+        title = "Categorical Time",
+        color = "Person"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none")
+
+p2 <- ggplot(long_data, aes(x = time, y = y, group = id, color = id)) +
+    geom_point(size = 2) +
+    geom_smooth(method = "lm", se = FALSE, linewidth = 0.8, alpha = 0.6) +
+    geom_smooth(
+        aes(group = 1),
+        method = "lm",
+        se = FALSE,
+        color = "black",
+        linewidth = 1.5,
+        linetype = "dashed"
+    ) +
+    scale_color_brewer(palette = "Set2") +
+    labs(
+        x = "Time (months)",
+        y = "Outcome",
+        title = "Continuous Time (linear)",
+        color = "Person"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none")
+
+library(patchwork)
+p1 + p2
+```
+
+<mark>Left:</mark> No functional form assumed; each wave has its own estimated mean. <mark>Right:</mark> Linear trajectory imposed; summarized by intercept and slope.
+
+# Part V: Estimating Mixed Models in R {background-color="#005030"}
+
+## The `lme4` Package {.smaller}
+
+The workhorse for mixed-effects models in R is `lme4` (with `lmerTest` for *p*-values):
+
+```{r}
+#| echo: true
+#| eval: false
+
+library(lme4)
+library(lmerTest)
+```
+
+The key function is `lmer()`, with a formula syntax that separates fixed and random effects:
+
+```{r}
+#| echo: true
+#| eval: false
+
+lmer(
+    outcome ~ fixed_predictors + (random_terms | grouping_variable),
+    data = my_data
+)
+```
+
+| Syntax | Meaning |
+|--------|---------|
+| `(1 | cluster)` | Random intercept for each cluster |
+| `(1 + x | cluster)` | Random intercept and slope for $x$ |
+| `(0 + x | cluster)` | Random slope only (no random intercept) |
+| `(1 | cluster1) + (1 | cluster2)` | Crossed random effects |
+
+## Example Dataset: Sleepstudy {.smaller}
+
+The `sleepstudy` data from `lme4` tracks <mark>reaction time</mark> across 10 days of sleep deprivation in 18 subjects:
+
+```{r}
+#| echo: true
+
+data("sleepstudy", package = "lme4")
+head(sleepstudy, 12) |> kable()
+```
+
+- <mark>Reaction</mark>: average reaction time (ms)
+- <mark>Days</mark>: days of sleep deprivation (0-9)
+- <mark>Subject</mark>: participant identifier (18 subjects)
+
+## Exploring the Data {.smaller}
+
+```{r}
+#| echo: true
+#| fig-width: 11
+#| fig-height: 5
+
+ggplot(sleepstudy, aes(x = Days, y = Reaction)) +
+    geom_line(aes(group = Subject), alpha = 0.3) +
+    geom_point(aes(color = Subject), size = 1.5, alpha = 0.7) +
+    geom_smooth(
+        method = "lm",
+        color = "black",
+        linewidth = 1.5,
+        linetype = "dashed"
+    ) +
+    labs(
+        x = "Days of Sleep Deprivation",
+        y = "Reaction Time (ms)",
+        title = "Individual Trajectories of Reaction Time"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+Each subject has a different baseline and a different rate of decline. A mixed model can capture both.
+
+## Step 1: The Empty Model {.smaller}
+
+The empty (unconditional) model partitions total variance into between- and within-subject components:
+
+```{r}
+#| echo: true
+
+m0 <- lmer(Reaction ~ 1 + (1 | Subject), data = sleepstudy)
+summary(m0)
+```
+
+## Computing the ICC {.smaller}
+
+```{r}
+#| echo: true
+
+vc <- as.data.frame(VarCorr(m0))
+sigma2_between <- vc$vcov[1]
+sigma2_within <- vc$vcov[2]
+
+icc <- sigma2_between / (sigma2_between + sigma2_within)
+cat("ICC =", round(icc, 3))
+```
+
+. . .
+
+About `r round(icc * 100)`% of the total variance in reaction time is between subjects. This justifies using a multilevel model.
+
+## Step 2: Random Intercept Model {.smaller}
+
+Add <mark>Days</mark> as a fixed predictor, keeping random intercepts:
+
+```{r}
+#| echo: true
+
+m1 <- lmer(Reaction ~ Days + (1 | Subject), data = sleepstudy)
+summary(m1)
+```
+
+## Step 3: Random Intercept and Slope {.smaller}
+
+Allow the <mark>effect of Days</mark> to vary across subjects:
+
+```{r}
+#| echo: true
+
+m2 <- lmer(Reaction ~ Days + (1 + Days | Subject), data = sleepstudy)
+summary(m2)
+```
+
+## Model Comparison {.smaller}
+
+We use a likelihood ratio test to determine whether the random slope improves the model:
+
+```{r}
+#| echo: true
+
+anova(m1, m2)
+```
+
+. . .
+
+The significant chi-square test and lower AIC/BIC for `m2` indicate that subjects differ meaningfully in how sleep deprivation affects their reaction time.
+
+## Interpreting the Results {.smaller}
+
+```{r}
+#| echo: true
+
+tidy(m2, effects = "fixed", conf.int = TRUE) |>
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+    kable()
+```
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Fixed effects:</mark>
+
+- <mark>Intercept</mark> ($\hat{\beta}_0$ = `r round(fixef(m2)[1], 1)` ms): average reaction time at Day 0
+- <mark>Days</mark> ($\hat{\beta}_1$ = `r round(fixef(m2)[2], 1)` ms/day): average increase in reaction time per additional day of sleep deprivation
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Random effects:</mark>
+
+```{r}
+#| echo: true
+
+tidy(m2, effects = "ran_pars") |>
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+    kable()
+```
+
+Subjects vary in both their baseline reaction time and in how much sleep deprivation affects them.
+
+:::
+::::
+
+## Visualizing Model Predictions {.smaller}
+
+```{r}
+#| echo: true
+#| fig-width: 11
+#| fig-height: 5
+
+sleepstudy$pred <- predict(m2)
+
+ggplot(sleepstudy, aes(x = Days, y = Reaction)) +
+    geom_point(alpha = 0.4) +
+    geom_line(aes(y = pred, color = Subject), linewidth = 0.8) +
+    geom_abline(
+        intercept = fixef(m2)[1],
+        slope = fixef(m2)[2],
+        linewidth = 1.5,
+        linetype = "dashed"
+    ) +
+    labs(
+        x = "Days of Sleep Deprivation",
+        y = "Reaction Time (ms)",
+        title = "Subject-Specific Predictions from the Random Slopes Model",
+        subtitle = "Dashed line = population average (fixed effects)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+## Categorical vs. Continuous Time: Sleepstudy {.smaller}
+
+Let's compare both approaches on the same data:
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Continuous time (linear):</mark>
+
+```{r}
+#| echo: true
+
+m_cont <- lmer(Reaction ~ Days + (1 + Days | Subject), data = sleepstudy)
+fixef(m_cont) |> round(2)
+```
+
+2 fixed-effect parameters.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Categorical time:</mark>
+
+```{r}
+#| echo: true
+
+sleepstudy$Days_cat <- factor(sleepstudy$Days)
+m_cat <- lmer(Reaction ~ Days_cat + (1 | Subject), data = sleepstudy)
+fixef(m_cat) |> round(2)
+```
+
+10 fixed-effect parameters (reference + 9 dummies).
+
+:::
+::::
+
+## Comparing Fits {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 5
+
+means_cat <- sleepstudy |>
+    group_by(Days) |>
+    summarise(mean_cat = mean(Reaction), .groups = "drop")
+
+means_cont <- tibble(
+    Days = 0:9,
+    mean_cont = fixef(m_cont)[1] + fixef(m_cont)[2] * 0:9
+)
+
+comp_data <- left_join(means_cat, means_cont, by = "Days")
+
+ggplot(comp_data, aes(x = Days)) +
+    geom_point(aes(y = mean_cat), size = 4, color = "#F47321") +
+    geom_line(
+        aes(y = mean_cat),
+        color = "#F47321",
+        linewidth = 1,
+        linetype = "solid"
+    ) +
+    geom_line(
+        aes(y = mean_cont),
+        color = "#005030",
+        linewidth = 1.2,
+        linetype = "dashed"
+    ) +
+    annotate(
+        "text",
+        x = 7,
+        y = 310,
+        label = "Categorical means",
+        color = "#F47321",
+        fontface = "bold",
+        size = 5
+    ) +
+    annotate(
+        "text",
+        x = 7,
+        y = 340,
+        label = "Linear fit",
+        color = "#005030",
+        fontface = "bold",
+        size = 5
+    ) +
+    labs(
+        x = "Days of Sleep Deprivation",
+        y = "Mean Reaction Time (ms)",
+        title = "Categorical vs. Continuous Time"
+    ) +
+    theme_minimal(base_size = 14)
+```
+
+In this case, the linear model provides a good approximation. But when trajectories are non-linear, categorical time will better capture the actual pattern of change.
+
+# Part VI: Generalized Estimating Equations (GEE) {background-color="#F47321"}
+
+## Mixed Models vs. GEE: Two Philosophies {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Mixed-effects models</mark> (subject-specific):
+
+- Model the <mark>individual</mark> trajectories
+- Random effects capture within-cluster correlation
+- Coefficients are <mark>conditional</mark> on the random effects
+- "How does $x$ affect $y$ *for a given individual*?"
+- Requires distributional assumptions about random effects ($u_j \sim N(0, \sigma^2_u)$)
+
+:::
+
+::: {.column width="50%"}
+
+<mark>GEE</mark> (population-averaged):
+
+- Model the <mark>marginal</mark> (population-level) mean
+- Working correlation structure accounts for clustering
+- Coefficients are <mark>marginal</mark>, averaged over all clusters
+- "How does $x$ affect the *average* $y$ in the population?"
+- No distributional assumptions about random effects
+- Uses <mark>sandwich (robust) standard errors</mark> for valid inference
+
+:::
+::::
+
+. . .
+
+::: {.callout-important}
+For linear models with identity link, mixed-effects and GEE often give <mark>similar</mark> fixed-effect estimates. The differences become substantial for <mark>non-linear</mark> models (logistic, Poisson).
+:::
+
+## When Does GEE Shine? {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Use GEE when:</mark>
+
+1. You care about <mark>population-averaged</mark> effects, not individual trajectories
+2. You have <mark>non-linear</mark> outcomes (binary, count) where the conditional vs. marginal distinction matters
+3. You want <mark>robustness</mark> to misspecification of the correlation structure
+4. You don't need to predict individual outcomes
+5. Your focus is on <mark>public health</mark> or <mark>policy</mark> implications (e.g., "What happens on average if we intervene?")
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Stick with mixed models when:</mark>
+
+1. You need <mark>individual-level</mark> predictions (BLUPs)
+2. You want to estimate the <mark>variance</mark> of individual differences
+3. Your research question is about individual trajectories
+4. You have <mark>unbalanced</mark> data with informative dropout (GEE assumes MCAR for dropout)
+5. You need to model complex random-effects structures
+
+::: {.callout-warning}
+## An Important Limitation of GEE
+Standard GEE assumes that missing data is <mark>MCAR</mark>. If dropout is related to observed data (MAR), weighted GEE or mixed models are preferable.
+:::
+:::
+::::
+
+## The GEE Framework {.smaller}
+
+GEE specifies three components:
+
+1. <mark>Mean model</mark> (same as GLM):
+
+$$E[y_{ij}] = g^{-1}(\beta_0 + \beta_1 x_{ij})$$
+
+2. <mark>Working correlation structure</mark>: an assumed form for the within-cluster correlations (does not need to be exactly correct)
+
+3. <mark>Sandwich estimator</mark>: robust standard errors that are valid even if the working correlation is wrong
+
+| Working Correlation | Assumes | Best For |
+|---------------------|---------|----------|
+| **Independence** | No within-cluster correlation | Baseline; always valid with sandwich SE |
+| **Exchangeable** | Constant correlation within clusters | Cross-sectional clusters (schools, clinics) |
+| **AR(1)** | Correlation decays with time lag | Equally spaced longitudinal data |
+| **Unstructured** | No restrictions | Few time points; most flexible |
+
+## GEE in R: The `geepack` Package {.smaller}
+
+```{r}
+#| echo: true
+
+library(geepack)
+
+gee_fit <- geeglm(
+    Reaction ~ Days,
+    id = Subject,
+    data = sleepstudy,
+    corstr = "exchangeable"
+)
+summary(gee_fit)
+```
+
+## Comparing GEE and Mixed Model Estimates {.smaller}
+
+```{r}
+#| echo: false
+
+lmer_est <- tidy(m2, effects = "fixed", conf.int = TRUE) |>
+    select(term, estimate, std.error) |>
+    mutate(Method = "Mixed Model (lmer)")
+
+gee_est <- broom::tidy(gee_fit, conf.int = TRUE) |>
+    select(term, estimate, std.error) |>
+    mutate(Method = "GEE (exchangeable)")
+
+comparison <- bind_rows(lmer_est, gee_est) |>
+    mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+kable(comparison)
+```
+
+. . .
+
+For this <mark>linear</mark> model with a continuous outcome, the fixed-effect estimates are very similar. The differences would be more pronounced with binary or count outcomes.
+
+## GEE with Different Correlation Structures {.smaller}
+
+```{r}
+#| echo: true
+
+gee_indep <- geeglm(
+    Reaction ~ Days,
+    id = Subject,
+    data = sleepstudy,
+    corstr = "independence"
+)
+gee_exch <- geeglm(
+    Reaction ~ Days,
+    id = Subject,
+    data = sleepstudy,
+    corstr = "exchangeable"
+)
+gee_ar1 <- geeglm(
+    Reaction ~ Days,
+    id = Subject,
+    data = sleepstudy,
+    corstr = "ar1"
+)
+```
+
+```{r}
+#| echo: false
+
+gee_comp <- bind_rows(
+    broom::tidy(gee_indep) |> mutate(Correlation = "Independence"),
+    broom::tidy(gee_exch) |> mutate(Correlation = "Exchangeable"),
+    broom::tidy(gee_ar1) |> mutate(Correlation = "AR(1)")
+) |>
+    filter(term == "Days") |>
+    select(Correlation, estimate, std.error, p.value) |>
+    mutate(across(where(is.numeric), ~ round(.x, 3)))
+
+kable(gee_comp)
+```
+
+. . .
+
+The <mark>point estimates</mark> are nearly identical across correlation structures. The <mark>standard errors</mark> differ slightly, but the sandwich estimator provides robustness.
+
+## When Conditional $\neq$ Marginal {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+For <mark>linear</mark> models:
+
+$$E[y_{ij} | u_j] = \beta_0 + \beta_1 x_{ij} + u_j$$
+
+Marginalizing over $u_j$:
+
+$$E[y_{ij}] = \beta_0 + \beta_1 x_{ij}$$
+
+The fixed effects are the <mark>same</mark>; linear models "collapse" nicely.
+
+:::
+
+::: {.column width="50%"}
+
+For <mark>logistic</mark> models:
+
+$$\text{logit}(P(y_{ij} = 1 | u_j)) = \beta_0 + \beta_1 x_{ij} + u_j$$
+
+Marginalizing over $u_j$:
+
+$$\text{logit}(P(y_{ij} = 1)) \neq \beta_0 + \beta_1 x_{ij}$$
+
+The marginal coefficients are <mark>attenuated</mark> relative to conditional coefficients. The GEE estimates are closer to zero than the GLMM estimates.
+
+::: {.callout-note}
+## Rule of Thumb
+For logistic models, the marginal (GEE) coefficient $\approx \beta_{\text{conditional}} / \sqrt{1 + c^2 \sigma^2_u}$ where $c \approx 16\sqrt{3}/(15\pi)$.
+:::
+:::
+::::
+
+## Summary: Mixed Models vs. GEE {.smaller}
+
+| Feature | Mixed-Effects Model | GEE |
+|---------|-------------------|-----|
+| **Coefficients** | Subject-specific (conditional) | Population-averaged (marginal) |
+| **Random effects** | Explicitly modeled | Not modeled (nuisance) |
+| **Correlation** | Implied by random effects | Specified by working correlation |
+| **Robustness** | Sensitive to RE distribution | Robust via sandwich SE |
+| **Missing data** | Valid under MAR | Valid under MCAR (standard GEE) |
+| **Individual predictions** | Yes (BLUPs) | No |
+| **Non-linear outcomes** | Conditional estimates | Marginal estimates |
+| **Best for** | Individual trajectories, prediction | Population effects, policy questions |
+
+## Choosing Between the Two {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Ask yourself:</mark>
+
+1. *Am I interested in what happens to the average person in the population, or in individual variation?*
+    - Population average → GEE
+    - Individual variation → Mixed model
+
+2. *Is my outcome continuous or binary/count?*
+    - Continuous → Often similar results
+    - Binary/Count → Results differ; choose based on Q1
+
+3. *Do I suspect informative dropout?*
+    - Yes → Mixed model (valid under MAR)
+    - No or MCAR → Either approach works
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## Practical Recommendation
+
+In many applications, it is informative to fit <mark>both</mark> and compare. If results are similar, the conclusions are robust. If they differ, understanding *why* they differ provides insight into the data structure.
+:::
+
+:::
+::::
+
+# Wrapping Up {background-color="#005030"}
+
+## Key Takeaways {.smaller}
+
+1. <mark>Independence matters</mark>: Classical methods assume independent observations. Violating this inflates Type I error.
+
+2. <mark>Clustered data is everywhere</mark>: Students in schools, patients in clinics, repeated measures, all create dependencies.
+
+3. <mark>Mixed-effects models</mark> handle clustering by modeling between-cluster variation with random effects.
+
+4. <mark>Time can be categorical or continuous</mark>: Categorical time is flexible but costly in parameters; continuous time is parsimonious but assumes a functional form.
+
+5. <mark>GEE offers an alternative</mark> that focuses on population-averaged effects with robust standard errors.
+
+6. <mark>The choice between mixed models and GEE</mark> depends on your research question: individual trajectories vs. population effects.
+
+## References {.smaller}
+
+- Raudenbush, S. W., & Bryk, A. S. (2002). *Hierarchical Linear Models* (2nd ed.). Sage.
+- Snijders, T. A. B., & Bosker, R. J. (2012). *Multilevel Analysis* (2nd ed.). Sage.
+- Fitzmaurice, G. M., Laird, N. M., & Ware, J. H. (2011). *Applied Longitudinal Analysis* (2nd ed.). Wiley.
+- Liang, K.-Y., & Zeger, S. L. (1986). Longitudinal data analysis using generalized linear models. *Biometrika, 73*(1), 13–22.
+- Bates, D., Maechler, M., Bolker, B., & Walker, S. (2015). Fitting linear mixed-effects models using lme4. *Journal of Statistical Software, 67*(1), 1–48.
+- Enders, C. K., & Tofighi, D. (2007). Centering predictor variables in cross-sectional multilevel models. *Psychological Methods, 12*(2), 121–138.
+
+## Questions?
