@@ -40,7 +40,10 @@ jobs:
             any::knitr
             any::rmarkdown
             any::mice
-            any::lavaan
+            any::lme4
+            any::lmerTest
+            any::broom.mixed
+            any::geepack
 
       - name: Setup Quarto
         uses: quarto-dev/quarto-actions/setup@v2
