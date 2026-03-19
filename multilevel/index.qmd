@@ -1,19 +1,54 @@
 ---
 title: "Multilevel Models"
 subtitle: "Multilevel Analysis and Group-Randomized Trials"
+author: "Francisco Cardozo, PhD"
 date: "2026-03-20"
 ---
 
-**Date:** Mar 20
+## Overview
+
+In this class, we will cover the theory and practice of multilevel modeling for clustered and longitudinal data. We will learn why ignoring the dependence structure in grouped data leads to incorrect inferences, how mixed-effects models and GEE address this, and how to fit and interpret these models in R.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Explain why independence of observations matters and what happens when it is violated
+2. Compute and interpret the Intraclass Correlation Coefficient (ICC) and the Design Effect
+3. Fit random-intercept and random-slope models using `lme4` in R
+4. Distinguish between categorical and continuous time specifications in longitudinal models
+5. Compare and contrast mixed-effects models and GEE for clustered data
 
 ## Topics
+
 -   Intraclass Correlation
 -   Design Effect
 -   Cluster-randomized and non-randomized designs
 -   Sandwich estimation
 
-## Homework
-**Assignment #7:** Conduct multilevel analysis. Due next week.
+## Materials
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-tip appearance="simple" icon=false}
+## Slides
+
+Access the class presentation slides:
+
+[View Class Slides](slides.qmd){.btn .btn-primary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-warning appearance="simple" icon=false}
+## Assignment
+
+Assignment #7: TBD
+:::
+:::
+
+:::
 
 ## Readings
 
