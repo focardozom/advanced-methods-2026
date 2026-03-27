@@ -47,7 +47,9 @@ Access the class presentation slides:
 ::: {.callout-warning appearance="simple" icon=false}
 ## Assignment
 
-**Assignment #8:** Conduct dyadic data analysis in Mplus. Due next week.
+**Assignment #8:** Estimating dyadic correlations via CFA and multilevel models. Due next week.
+
+[View Assignment](assignment.qmd){.btn .btn-warning .btn-lg role="button" style="width: 100%;"}
 :::
 :::
 

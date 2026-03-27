@@ -4,6 +4,13 @@ subtitle: "Actor-Partner Interdependence and Multilevel Approaches"
 author: "Francisco Cardozo, PhD"
 brand: false
 engine: knitr
+filters:
+  - webr
+webr:
+  packages:
+    - tidyverse
+    - lmerTest
+    - glue
 format: 
   revealjs:
     theme: simple
@@ -44,7 +51,7 @@ The dyad is the unit of interpersonal interaction
 ::: {.column width="50%"}
 ### Distinguishable
 
--   There is a variable that can be used to differentiate between the two persons.
+-   There is a variable that can be used to differentiate between the two members of the dyad.
 
 -   Husband and wife
 
@@ -69,24 +76,16 @@ The dyad is the unit of interpersonal interaction
 ## Activity: Classify the Dyad {background-color="#e8f5e9"}
 
 :::: {.callout-tip}
-## In pairs, classify each example as **Distinguishable** or **Indistinguishable**
+## In pairs, classify each example as **Distinguishable** (🧟️🧛️ = D) or **Indistinguishable** (🧟️🧟️ + I)
 ::::
 
 ::: {.incremental}
-1. A therapist and their patient
-2. Two siblings close in age
-3. A mentor and mentee in a research lab
-4. Two co-authors who contributed equally
-5. A parent and an adolescent child
-6. Two romantic partners in a same-sex relationship
+A therapist and their patient
+Two siblings
+Two co-authors who contributed equally
+A parent and an adolescent child
+Two romantic partners in a same-sex relationship
 :::
-
-. . .
-
-:::: {.callout-note}
-## Discussion
-What makes some cases ambiguous? Could a pair be distinguishable in one study and indistinguishable in another?
-::::
 
 ## Dyad Variability
 
@@ -115,9 +114,9 @@ What makes some cases ambiguous? Could a pair be distinguishable in one study an
 
 ### Non independence
 
-"If the two scores from the two members of the dyad are non-independent, then those two scores are more similar to (or different from) from one another than are two scores from two people who are not members of the same dyad".
+*If the two scores from the two members of the dyad are non-independent, then those two scores are more similar to (or different from) from one another than are two scores from two people who are not members of the same dyad.*
 
--   More similar within the dyad than the average
+> *More similar within the dyad than the average*
 
 ::: columns
 ::: {.column width="30%"}
@@ -127,27 +126,25 @@ What makes some cases ambiguous? Could a pair be distinguishable in one study an
 🧟️🧛️
 :::
 ::: {.column width="30%"}
-🧟🧛️
+🧛️🧛️
 :::
 :::
 ## Activity: Spotting Non-Independence {background-color="#e8f5e9"}
 
 :::: {.callout-tip}
-## Think-Pair-Share
-For each scenario, discuss: **Is there non-independence?** If so, would scores be *more similar* or *more different* within dyads?
+## Activity: Spotting Non-Independence
+**Is there non-independence?** If so, would scores be *more similar* or *more different* within dyads?
 ::::
 
 ::: {.incremental}
-1. **Married couples** rating their satisfaction with the relationship
-2. **Debate partners** scoring each other's performance
-3. **Roommates** reporting hours of sleep per night
-4. **Siblings** reporting their parents' parenting style
+**Married couples** rating their satisfaction with the relationship.  
+**Roommates** reporting hours of sleep per night.  
+**Siblings** reporting their parents' parenting style.  
 :::
 
 . . .
 
 :::: {.callout-warning}
-## Key Insight
 Non-independence is not always positive! In competitive dyads (e.g., debate opponents), members' scores may be *negatively* correlated. The statistical problem of non-independence applies regardless of the direction.
 ::::
 
@@ -155,13 +152,82 @@ Non-independence is not always positive! In competitive dyads (e.g., debate oppo
 
 ![](images/dyadic_data_structure.png){width="20%"}
 
+## Exercise: Long to Wide {background-color="#e8f5e9" .smaller}
+
+```{webr-r}
+#| context: setup
+
+dyad_long <- tibble(
+    dyad_id = rep(1:5, each = 2),
+    partner = rep(c("A", "B"), times = 5),
+    satisfaction = c(7, 8, 5, 6, 9, 7, 4, 3, 6, 8)
+)
+```
+
+Here is a simple dyadic dataset in **long format**:
+
+```{webr-r}
+dyad_long
+```
+
+Use `pivot_wider()` to reshape `dyad_long` into wide format where each row is one dyad and columns are `satisfaction_A` and `satisfaction_B`:
+
+```{webr-r}
+# Reshape from long to wide
+dyad_long |>
+    pivot_wider(
+        names_from = ______,
+        values_from = ______,
+        names_prefix = "satisfaction_"
+    )
+```
+
+## Exercise: Wide to Long {background-color="#e8f5e9" .smaller}
+
+```{webr-r}
+#| context: setup
+
+dyad_wide <- tibble(
+    dyad_id = 1:5,
+    satisfaction_A = c(7, 5, 9, 4, 6),
+    satisfaction_B = c(8, 6, 7, 3, 8),
+    years_together = c(3, 7, 1, 12, 5)
+)
+```
+
+Here is a dyadic dataset in **wide format** (one row per dyad):
+
+```{webr-r}
+dyad_wide
+```
+
+Use `pivot_longer()` to reshape `dyad_wide` into long format where each row is one partner:
+
+```{webr-r}
+# Reshape from wide to long
+dyad_wide |>
+    pivot_longer(
+        cols = starts_with("______"),
+        names_to = "partner",
+        values_to = "______",
+        names_prefix = "satisfaction_"
+    )
+```
+
+:::: {.callout-note}
+## When do you need each format?
+
+- **Long format** → multilevel models (`lmer`), most `ggplot2` visualizations
+- **Wide format** → SEM / APIM in Mplus, computing dyad-level correlations
+::::
+
 ## Type of models
 
 -   Multilevel model
 -   Structural Equation Model
 -   Actor Partner Interdependence Model
 
-## Activity: Why Does Independence Matter? {background-color="#e8f5e9"}
+## Why Does Independence Matter? {background-color="#e8f5e9"}
 
 :::: {.callout-tip}
 ## Quick Poll
@@ -175,26 +241,64 @@ Imagine you run a regular regression (`lm()`) predicting relationship satisfacti
 - **Biased inference**: You might conclude a predictor is significant when it is not
 :::
 
-. . .
-
-:::: {.callout-important}
-## The takeaway
-Ignoring dyadic structure does not bias your coefficient estimates, but it **does** bias your standard errors --- usually making them too small. This is the same problem we saw with clustered data in multilevel models.
-::::
 
 # Multilevel model {background-color="#fde74c"}
 
-```{r libraries}
-#| echo: true
-#| eval: false
-library(tidyverse) # data cleaning
-library(tidymodels) # to fit models
-library(multilevelmod) # for mixed models
-library(lme4) # for mixed models
-library(reactable) # pretty tables
-library(broom) # extract coefficients
-library(broom.mixed) # extract coefficients
-library(kableExtra) # tables
+```{webr-r}
+#| context: setup
+library(tidyverse)
+library(lmerTest)
+
+data_example <- tibble(
+    Dyad = rep(1:10, each = 2),
+    Person = rep(1:2, times = 10),
+    Future = c(
+        75,
+        90,
+        55,
+        75,
+        45,
+        33,
+        70,
+        75,
+        50,
+        40,
+        85,
+        90,
+        75,
+        80,
+        90,
+        68,
+        65,
+        78,
+        88,
+        95
+    ),
+    Gender = rep(c(-1, 1), times = 10),
+    Contribution = c(
+        -10,
+        -5,
+        0,
+        10,
+        -10,
+        -15,
+        5,
+        15,
+        0,
+        -5,
+        -10,
+        20,
+        -5,
+        0,
+        5,
+        0,
+        0,
+        15,
+        -15,
+        5
+    ),
+    Culture = rep(c(1, -1), each = 10)
+)
 ```
 
 ## The Study {.smaller}
@@ -240,26 +344,8 @@ All categorical predictors use **effect coding** (-1, 1) so that intercepts repr
 
 ## The Data {.smaller}
 
-```{r data}
-#| echo: true
-#| eval: false
-data_example <- tibble(
-  Dyad         = rep(1:10, each = 2),
-  Person       = rep(1:2, times = 10),
-  Future       = c(75, 90, 55, 75, 45, 33, 70, 75, 50, 40,
-                   85, 90, 75, 80, 90, 68, 65, 78, 88, 95),
-  Gender       = rep(c(-1, 1), times = 10),
-  Contribution = c(-10, -5, 0, 10, -10, -15, 5, 15, 0, -5,
-                   -10, 20, -5, 0, 5, 0, 0, 15, -15, 5),
-  Culture      = rep(c(1, -1), each = 10)
-)
-```
-
-```{r the-data}
-#| echo: true
-#| eval: false
-library(reactable)
-reactable(data_example, striped = TRUE, highlight = TRUE, bordered = TRUE)
+```{webr-r}
+data_example
 ```
 
 ## A First Look at the Data {.smaller}
@@ -300,68 +386,48 @@ We can progressively build complexity:
 4. **Interaction:** Does the association between contribution and future expectations depend on cultural background?
 :::
 
-. . .
+## Step 1: The "Wrong" Model. OLS Regression {.smaller}
 
-:::: {.callout-important}
-## The critical question
-Can we answer these using a standard regression, or do we need to account for the **dyadic structure**?
+:::: {.callout-warning}
+## Why is this wrong?
+Standard `lm()` treats all 20 observations as independent, ignoring the dyadic structure.
 ::::
 
-## Estimate a model using multiple regression
+```{webr-r}
+ols_model <- lm(Future ~ Contribution * Culture, data = data_example)
 
-```{r, wrong-model}
-#| echo: true
-#| eval: false
-
-lmm_wrong <- lm(Future ~ Contribution + Culture + Contribution*Culture,
-                data=data_example) 
-
+ols_model |> summary()
 ```
 
-::: {style="font-size: 2.75em"}
-```{r wrong-model-table}
-#| echo: true
-#| eval: false
-library(gtsummary)
-library(gt)
-tbl_regression(lmm_wrong, intercept=T) %>% 
-  bold_p(t = 0.10) %>%
-  bold_labels() %>% 
-  as_gt() %>% 
-  tab_options(table.font.size = 25,
-              table.width = pct(80))
+## Step 2: The Multilevel Model {.smaller}
 
-```
-:::
+We add a **random intercept** for `Dyad` to account for non-independence within couples:
 
-## Estimate a model using lmer (random effect)
-
-```{r mixed-model}
-#| echo: true
-#| eval: false
-lmm <- lmer(
-    Future ~ Contribution + Culture + Contribution * Culture + (1 | Dyad),
+```{webr-r}
+mlm <- lmer(
+    Future ~ Contribution * Culture + (1 | Dyad),
     data = data_example
 )
 
-sjPlot::tab_model(
-    lmm,
-    CSS = list(
-        css.table = "font-size:0.5em;"
-    )
-)
-
+mlm |> summary()
 ```
 
-## Is the random effect significant?
+## Step 3: Compare OLS vs. Multilevel {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-anova(lmm, lmm_wrong)
+Is the random effect (the dyadic clustering) significant?
+
+```{webr-r}
+anova(mlm, ols_model)
 ```
 
-## Interclass correlation
+. . .
+
+:::: {.callout-important}
+## What to look for
+A significant p-value means the dyadic clustering matters --- the random intercept improves model fit beyond the OLS model.
+::::
+
+## Interclass Correlation
 
 How many random effects are in this model?
 
@@ -370,88 +436,87 @@ Two random factors:
 -   The dyadic covariance (the variance of the intercept)
 -   The error variance
 
-## Compute Interclass Correlation Coefficient
+## Step 4: Compute the ICC {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-exp_rsq <- lmer(Future ~ (1 | Dyad), data = data_example)
-summary(exp_rsq)
+First, fit an **empty model** (no predictors) to isolate the dyadic variance:
 
-#255.5 / (255.5 + 82.3)
+```{webr-r}
+empty_model <- lmer(Future ~ (1 | Dyad), data = data_example)
 
+empty_model |> VarCorr() |> as_tibble()
 ```
 
-255.5 / (255.5 + 82.3) = 0.7563647
+Now compute the ICC manually:
 
-## R square
+```{webr-r}
+vc <- empty_model |> VarCorr() |> as_tibble()
 
-```{r}
-#| echo: true
-#| eval: false
-library(MuMIn)
-r.squaredGLMM(exp_rsq)
-
-```
-
-![](images/omg.gif)
-
-## Compute ICC
-
-```{r}
-#| echo: true
-#| eval: false
-summary(lmm)
-```
-
-## Compute ICC
-
-```{r}
-#| echo: true
-#| eval: false
-
-sjPlot::tab_model(
-    lmm,
-    CSS = list(
-        css.table = "font-size:0.5em;"
+icc <- vc |>
+    summarise(
+        sigma2_dyad = vcov[grp == "Dyad"],
+        sigma2_residual = vcov[grp == "Residual"],
+        icc = sigma2_dyad / (sigma2_dyad + sigma2_residual)
     )
+
+icc |>
+    mutate(across(everything(), \(x) round(x, 3))) |>
+    print()
+
+glue::glue(
+    "{round(icc$icc * 100, 1)}% of total variance in Future is between dyads"
 )
 ```
 
-## How much variance is explained by the two predictors and the interaction?
+## Visualizing the Model {.smaller}
 
-```{r}
-#| echo: true
-#| eval: false
-#1 - ((176.42 + 43.76) / (255.5 + 82.3))
+```{webr-r}
+data_example <- data_example |>
+    mutate(
+        Culture_label = if_else(Culture == 1, "American", "Asian"),
+        fitted = predict(mlm)
+    )
+
+data_example |>
+    ggplot(aes(x = Contribution, y = Future)) +
+    geom_point(aes(color = Culture_label), size = 3, alpha = 0.7) +
+    geom_line(aes(y = fitted, color = Culture_label, group = Dyad)) +
+    facet_wrap(~Culture_label) +
+    labs(
+        x = "Household Contribution (mean-centered)",
+        y = "Likelihood of Marriage (%)",
+        color = "Culture",
+        title = "Contribution → Future Expectations by Culture"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
 ```
 
-1 - ((176.42 + 43.76) / (255.5 + 82.3)) = 34.8%
+## What Does the Plot Tell Us? {.smaller}
 
-## Activity: Interpreting the ICC {background-color="#e8f5e9"}
+:::: columns
+::: {.column width="50%"}
+### Fixed effects
 
-:::: {.callout-tip}
-## Small Group Exercise
-We computed ICC = 0.76 for our couple data. Now interpret these scenarios:
+- The **slope** shows the association between contribution and future expectations
+- **Separate panels** show whether this association differs by culture (the interaction)
+:::
+
+::: {.column width="50%"}
+### Random effects
+
+- Each **line segment** connects the two members of a dyad
+- Lines at different heights reflect **different dyad intercepts**
+- The spread of intercepts is the between-dyad variance we captured with `(1 | Dyad)`
+:::
 ::::
-
-| Scenario | ICC | What does it mean? |
-|----------|-----|--------------------|
-| Couples rating relationship quality | 0.76 | |
-| Twins' IQ scores | 0.85 | |
-| Random pairs of strangers' height | 0.02 | |
-| Coworkers' job satisfaction | 0.35 | |
 
 . . .
 
-:::: {.callout-note}
-## Interpretation Guide
-
-- **ICC near 0**: Dyad members are no more similar than random pairs --- *dyadic structure may not matter*
-- **ICC moderate (0.2--0.5)**: Some similarity within dyads --- *multilevel model recommended*
-- **ICC high (> 0.5)**: Strong within-dyad similarity --- *ignoring dyadic structure is a serious problem*
-- **ICC negative**: Members are *more different* than random pairs (e.g., complementary roles)
+:::: {.callout-tip}
+## Try it yourself
+Go back to the plot code and change `facet_wrap(~Culture_label)` to `facet_wrap(~factor(Dyad))` to see each couple separately.
 ::::
+
 
 # Actor-Partner Interdependence Model (APIM) {background-color="#fde74c"}
 
@@ -468,69 +533,191 @@ We computed ICC = 0.76 for our couple data. Now interpret these scenarios:
 
 ## Activity: Design Your Own APIM {background-color="#e8f5e9"}
 
-:::: {.callout-tip}
-## In groups of 3--4, design an APIM study
-::::
-
 Answer the following for a dyadic relationship of your choice:
 
 ::: {.incremental}
-1. **Who is the dyad?** (e.g., parent-child, romantic partners, coach-athlete)
-2. **Distinguishable or indistinguishable?** Why?
-3. **What is X (the predictor)?** (e.g., stress, communication style)
-4. **What is Y (the outcome)?** (e.g., well-being, performance)
-5. **What would a significant *actor effect* mean in plain language?**
-6. **What would a significant *partner effect* mean?**
-7. **Which effect do you hypothesize to be larger?** Why?
+**Who is the dyad?** (e.g., parent-child, romantic partners, coach-athlete)
+**Distinguishable or indistinguishable?** Why?
+**What is X (the predictor)?** (e.g., stress, communication style)
+**What is Y (the outcome)?** (e.g., well-being, performance)
+**What would a significant *actor effect* mean in plain language?**
+**What would a significant *partner effect* mean?**
+**Which effect do you hypothesize to be larger?** Why?
 :::
-
-. . .
-
-:::: {.callout-note}
-## Share out
-Each group presents their APIM in 2 minutes. Class votes on the most creative research question.
-::::
 
 # Structural Equation Model Approach {background-color="#fde74c"}
 
-## Structural Equation Model Approach {background-color="#9bc53d"}
+## Dyadic CFA {background-color="#9bc53d"}
 
 ![Confirmatory Factor Analysis](images/cfa_dyadic.svg)
 
-## Structural Equation Model Approach
+## The Idea Behind Dyadic CFA {.smaller}
 
-![SEM approach](images/sem_approach.png)
+:::: columns
+::: {.column width="55%"}
+### Why a dyadic CFA?
 
-## Example in Mplus
+Both members of the dyad answer the **same items**. Because they share a context (the same family), the residuals of matching items are expected to be correlated.
 
--   Open dyadic.inp
+A dyadic CFA accounts for this by:
 
--   Data are on dyadic_data.dta
-
--   Run
-
--   What is the correlation between dyads?
-
-## Activity: Explore the APIM Shiny App {background-color="#e8f5e9"}
-
-:::: {.callout-tip}
-## Hands-On Exploration
-Open the [Shiny APIM App](https://davidakenny.shinyapps.io/APIM_MM/) and work through the following tasks:
-::::
-
-::: {.incremental}
-1. **Enter the sample data** from our class example (or use the app defaults)
-2. **Set the dyad type** to distinguishable --- run the model and note the actor and partner effects
-3. **Switch to indistinguishable** --- what changes in the output? Why?
-4. **Experiment**: What happens to the partner effect when you increase the correlation between partners' predictors?
-5. **Interpret**: Write one sentence summarizing the actor effect and one sentence for the partner effect
+- Defining a **separate latent factor** for each dyad member
+- Allowing the **two factors to correlate** (shared perception)
+- Allowing **correlated residuals** between matching items across members
 :::
 
-. . .
+::: {.column width="45%"}
+:::: {.callout-note}
+## Our example
+**Dyad:** Parent and adolescent child
 
-:::: {.callout-warning}
-## Reflection
-How do the results from the Shiny app compare to what you would get from a simple regression ignoring the dyadic structure?
+**Construct:** Perceived harm of alcohol use in young people
+
+**Items (same 4 for both):**
+
+1. Alcohol harms physical health
+2. Alcohol harms academic performance
+3. Alcohol leads to risky behavior
+4. Alcohol damages relationships
+::::
+:::
+::::
+
+## Simulating Dyadic CFA Data {.smaller}
+
+We simulate 200 parent-child dyads answering 4 items each:
+
+```{webr-r}
+set.seed(752)
+n <- 200
+
+# Latent factors (correlated within dyad, r = 0.45)
+eta_child <- rnorm(n)
+eta_parent <- 0.45 * eta_child + sqrt(1 - 0.45^2) * rnorm(n)
+
+# Factor loadings and residual correlation
+lambda <- c(0.80, 0.75, 0.70, 0.65)
+r_resid <- 0.25
+
+items <- map_dfc(1:4, \(j) {
+    e_child <- rnorm(n)
+    e_parent <- r_resid * e_child + sqrt(1 - r_resid^2) * rnorm(n)
+
+    tibble(
+        "C{j}" := lambda[j] * eta_child + sqrt(1 - lambda[j]^2) * e_child,
+        "P{j}" := lambda[j] * eta_parent + sqrt(1 - lambda[j]^2) * e_parent
+    )
+})
+
+# C1-C4: child items, P1-P4: parent items
+items |> head(8)
+```
+
+## Exporting for Mplus {.smaller}
+
+Mplus expects a **space-delimited** `.dat` file with **no headers**:
+
+```{webr-r}
+items |>
+    select(C1:C4, P1:P4) |>
+    slice_head(n = 5) |>
+    mutate(across(everything(), \(x) round(x, 3)))
+```
+
+To save the file on your computer, run this in R (not webR):
+
+```r
+items |>
+  select(C1:C4, P1:P4) |>
+  write_delim("dyadic_cfa.dat", col_names = FALSE)
+```
+
+## The Mplus Script: Dyadic CFA {.smaller}
+
+:::: {.callout-note}
+## File: `dyadic_cfa.inp`
+Download this file from the course website and run it in Mplus.
+::::
+
+```default
+TITLE: Dyadic CFA - Perceived Harm of Alcohol
+  Parent-Child Dyads (200 families)
+
+DATA: FILE = "dyadic_cfa.dat";
+
+VARIABLE:
+  NAMES = C1 C2 C3 C4 P1 P2 P3 P4;
+  USEVARIABLES = C1 C2 C3 C4 P1 P2 P3 P4;
+
+MODEL:
+  ! Latent factors
+  CHILD  BY C1* C2 C3 C4;
+  PARENT BY P1* P2 P3 P4;
+
+  ! Fix factor variances for identification
+  CHILD@1;
+  PARENT@1;
+
+  ! Factor correlation (dyadic association)
+  CHILD WITH PARENT;
+
+  ! Correlated residuals across matching items
+  C1 WITH P1;
+  C2 WITH P2;
+  C3 WITH P3;
+  C4 WITH P4;
+
+OUTPUT: STDYX MODINDICES CINTERVAL;
+```
+
+## Reading the Output {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+### What to look for
+
+1. **Factor loadings**: Do the 4 items load well on each factor?
+2. **CHILD WITH PARENT**: How strongly correlated are parent and child perceptions of alcohol harm?
+3. **Correlated residuals** (C1 WITH P1, etc.): Is there item-specific agreement beyond the latent factors?
+4. **Model fit**: Check CFI, TLI, RMSEA, SRMR
+:::
+
+::: {.column width="50%"}
+### Questions for class
+
+- What is the correlation between the child and parent factors? Is it significant?
+- Which item has the highest loading for each factor?
+- Are the correlated residuals significant? What would it mean if they were not?
+- **Try it:** Remove the `C1 WITH P1;` lines and re-run. How does model fit change?
+:::
+::::
+
+## Testing Measurement Invariance {.smaller}
+
+To test whether the items **function the same way** for parents and children, constrain the loadings to be equal:
+
+```default
+MODEL:
+  ! Equal loadings across parent and child
+  CHILD  BY C1* C2 C3 C4 (L1-L4);
+  PARENT BY P1* P2 P3 P4 (L1-L4);
+
+  CHILD@1;
+  PARENT@1;
+
+  CHILD WITH PARENT;
+
+  C1 WITH P1;
+  C2 WITH P2;
+  C3 WITH P3;
+  C4 WITH P4;
+
+OUTPUT: STDYX MODINDICES CINTERVAL;
+```
+
+:::: {.callout-tip}
+## Compare models
+Run the **free** and **constrained** models. A non-significant chi-square difference means the items work equivalently for both parents and children --- supporting **measurement invariance**.
 ::::
 
 ## Additional Resources
