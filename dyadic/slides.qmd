@@ -1,14 +1,20 @@
 ---
 title: "Dyadic Data Analysis"
+subtitle: "Actor-Partner Interdependence and Multilevel Approaches"
+author: "Francisco Cardozo, PhD"
+brand: false
+engine: knitr
 format: 
   revealjs:
     theme: simple
-    logo: "../images/umlogo.svg"
+    logo: "../images/umlogo.png"
     footer: "EPH 752 Advanced Research Methods"
     chalkboard: true
     slide-number: true
     show-slide-number: all
     link-external-newwindow: true
+    code-overflow: wrap
+    scrollable: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -60,6 +66,28 @@ The dyad is the unit of interpersonal interaction
 :::
 :::
 
+## Activity: Classify the Dyad {background-color="#e8f5e9"}
+
+:::: {.callout-tip}
+## In pairs, classify each example as **Distinguishable** or **Indistinguishable**
+::::
+
+::: {.incremental}
+1. A therapist and their patient
+2. Two siblings close in age
+3. A mentor and mentee in a research lab
+4. Two co-authors who contributed equally
+5. A parent and an adolescent child
+6. Two romantic partners in a same-sex relationship
+:::
+
+. . .
+
+:::: {.callout-note}
+## Discussion
+What makes some cases ambiguous? Could a pair be distinguishable in one study and indistinguishable in another?
+::::
+
 ## Dyad Variability
 
 ::: columns
@@ -102,9 +130,26 @@ The dyad is the unit of interpersonal interaction
 🧟🧛️
 :::
 :::
-## Exercise
+## Activity: Spotting Non-Independence {background-color="#e8f5e9"}
 
-[Jamboard](https://jamboard.google.com/d/1C8A_jfudKn5ALtbtpJOqo0cTzkVdCp89PS-deuwQ76M/edit?usp=sharing)
+:::: {.callout-tip}
+## Think-Pair-Share
+For each scenario, discuss: **Is there non-independence?** If so, would scores be *more similar* or *more different* within dyads?
+::::
+
+::: {.incremental}
+1. **Married couples** rating their satisfaction with the relationship
+2. **Debate partners** scoring each other's performance
+3. **Roommates** reporting hours of sleep per night
+4. **Siblings** reporting their parents' parenting style
+:::
+
+. . .
+
+:::: {.callout-warning}
+## Key Insight
+Non-independence is not always positive! In competitive dyads (e.g., debate opponents), members' scores may be *negatively* correlated. The statistical problem of non-independence applies regardless of the direction.
+::::
 
 ## Data structure
 
@@ -115,6 +160,27 @@ The dyad is the unit of interpersonal interaction
 -   Multilevel model
 -   Structural Equation Model
 -   Actor Partner Interdependence Model
+
+## Activity: Why Does Independence Matter? {background-color="#e8f5e9"}
+
+:::: {.callout-tip}
+## Quick Poll
+Imagine you run a regular regression (`lm()`) predicting relationship satisfaction from communication quality, using data from 50 couples (100 individuals). What could go wrong?
+::::
+
+::: {.incremental}
+- **Inflated N**: You treat 100 observations as independent, but you really have 50 dyads
+- **Underestimated standard errors**: Within-couple similarity means less unique information per observation
+- **False positives**: Confidence intervals are too narrow, p-values are too small
+- **Biased inference**: You might conclude a predictor is significant when it is not
+:::
+
+. . .
+
+:::: {.callout-important}
+## The takeaway
+Ignoring dyadic structure does not bias your coefficient estimates, but it **does** bias your standard errors --- usually making them too small. This is the same problem we saw with clustered data in multilevel models.
+::::
 
 # Multilevel model {background-color="#fde74c"}
 
@@ -131,137 +197,115 @@ library(broom.mixed) # extract coefficients
 library(kableExtra) # tables
 ```
 
-## Data set
+## The Study {.smaller}
 
-::: r-fit-text
--   10 cohabiting heterosexual couples.
+:::: columns
+::: {.column width="55%"}
+### Research scenario
 
-> Examine whether the contribution a person made to the household (a composite score based on financial contribution, as well as household labor) was associated with that person prediction for the relationship's future - specifically, the likelihood of marriage within the next 5 years, measured as a percentage.
+**Sample:** 10 cohabiting heterosexual couples (20 individuals)
 
-> Cultural variation in the association.
+**Research question:** Is household contribution associated with expectations about the relationship's future?
+
+**Outcome:** Likelihood of marriage within 5 years (%)
+
+**Predictor:** Household contribution (composite of financial contribution + household labor, mean-centered)
+
+**Moderator:** Cultural background
 :::
 
-## The data
+::: {.column width="45%"}
+:::: {.callout-note}
+## Why is this dyadic?
+Each couple shares a household, finances, and a relationship. One partner's contribution may affect *both* partners' expectations about the future.
+::::
+:::
+::::
+
+## Variable Codebook {.smaller}
+
+| Variable | Description | Coding |
+|----------|------------|--------|
+| `Dyad` | Couple identifier | 1--10 |
+| `Person` | Individual within the dyad | 1 = Person A, 2 = Person B |
+| `Future` | Perceived likelihood of marriage within 5 years | 0--100% |
+| `Gender` | Gender of the individual | -1 = Women, 1 = Men |
+| `Contribution` | Household contribution (mean-centered) | Negative = below average |
+| `Culture` | Cultural background of the couple | 1 = American, -1 = Asian |
+
+:::: {.callout-tip}
+## Note on coding
+All categorical predictors use **effect coding** (-1, 1) so that intercepts represent the grand mean and interactions are readily interpretable.
+::::
+
+## The Data {.smaller}
 
 ```{r data}
 #| echo: true
 #| eval: false
-data_example <-
-    tibble(
-        Dyad = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10),
-        Person = c(1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2),
-        Future = c(
-            75,
-            90,
-            55,
-            75,
-            45,
-            33,
-            70,
-            75,
-            50,
-            40,
-            85,
-            90,
-            75,
-            80,
-            90,
-            68,
-            65,
-            78,
-            88,
-            95
-        ),
-        Gender = c(
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            1
-        ),
-        Contribution = c(
-            -10,
-            -5,
-            0,
-            10,
-            -10,
-            -15,
-            5,
-            15,
-            0,
-            -5,
-            -10,
-            20,
-            -5,
-            0,
-            5,
-            0,
-            0,
-            15,
-            -15,
-            5
-        ),
-        Culture = c(
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1
-        )
-    )
-
+data_example <- tibble(
+  Dyad         = rep(1:10, each = 2),
+  Person       = rep(1:2, times = 10),
+  Future       = c(75, 90, 55, 75, 45, 33, 70, 75, 50, 40,
+                   85, 90, 75, 80, 90, 68, 65, 78, 88, 95),
+  Gender       = rep(c(-1, 1), times = 10),
+  Contribution = c(-10, -5, 0, 10, -10, -15, 5, 15, 0, -5,
+                   -10, 20, -5, 0, 5, 0, 0, 15, -15, 5),
+  Culture      = rep(c(1, -1), each = 10)
+)
 ```
-
-::: r-fit-text
-Note: women = -1 and men = 1, American = 1 and Asian =-1. Contribution is about the sample mean (so the interaction among predictors can be readily interpreted).
 
 ```{r the-data}
 #| echo: true
 #| eval: false
-
 library(reactable)
-reactable(data_example)
+reactable(data_example, striped = TRUE, highlight = TRUE, bordered = TRUE)
+```
 
-``
-`
+## A First Look at the Data {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+### Within each couple
+
+| Dyad | Person | Future | Contribution |
+|------|--------|--------|--------------|
+| 1    | 1 (W)  | 75     | -10          |
+| 1    | 2 (M)  | 90     | -5           |
+| 2    | 1 (W)  | 55     | 0            |
+| 2    | 2 (M)  | 75     | 10           |
+| 3    | 1 (W)  | 45     | -10          |
+| 3    | 2 (M)  | 33     | -15          |
 :::
 
-## Things we can do
+::: {.column width="50%"}
+### Notice the patterns
 
--   Estimate the mean for future.
--   Using contribution, estimate if more contributions-more positive future
--   Using culture, we can estimate differences between groups.
--   Finally, the interaction between culture, contribution and future.
+- Partners within a dyad tend to have **similar** Future scores
+- Couple 1: both optimistic (75, 90)
+- Couple 3: both pessimistic (45, 33)
+- But there is variability *within* couples too
+- **This similarity is the non-independence** we need to model
+:::
+::::
+
+## Research Questions
+
+We can progressively build complexity:
+
+::: {.incremental}
+1. **Descriptive:** What is the average expected likelihood of marriage across all individuals?
+2. **Main effect:** Is higher household contribution associated with more optimism about the future?
+3. **Group differences:** Do American and Asian couples differ in their expectations?
+4. **Interaction:** Does the association between contribution and future expectations depend on cultural background?
+:::
+
+. . .
+
+:::: {.callout-important}
+## The critical question
+Can we answer these using a standard regression, or do we need to account for the **dyadic structure**?
+::::
 
 ## Estimate a model using multiple regression
 
@@ -286,10 +330,8 @@ tbl_regression(lmm_wrong, intercept=T) %>%
   as_gt() %>% 
   tab_options(table.font.size = 25,
               table.width = pct(80))
-  
 
-`
-``
+```
 :::
 
 ## Estimate a model using lmer (random effect)
@@ -386,6 +428,31 @@ sjPlot::tab_model(
 
 1 - ((176.42 + 43.76) / (255.5 + 82.3)) = 34.8%
 
+## Activity: Interpreting the ICC {background-color="#e8f5e9"}
+
+:::: {.callout-tip}
+## Small Group Exercise
+We computed ICC = 0.76 for our couple data. Now interpret these scenarios:
+::::
+
+| Scenario | ICC | What does it mean? |
+|----------|-----|--------------------|
+| Couples rating relationship quality | 0.76 | |
+| Twins' IQ scores | 0.85 | |
+| Random pairs of strangers' height | 0.02 | |
+| Coworkers' job satisfaction | 0.35 | |
+
+. . .
+
+:::: {.callout-note}
+## Interpretation Guide
+
+- **ICC near 0**: Dyad members are no more similar than random pairs --- *dyadic structure may not matter*
+- **ICC moderate (0.2--0.5)**: Some similarity within dyads --- *multilevel model recommended*
+- **ICC high (> 0.5)**: Strong within-dyad similarity --- *ignoring dyadic structure is a serious problem*
+- **ICC negative**: Members are *more different* than random pairs (e.g., complementary roles)
+::::
+
 # Actor-Partner Interdependence Model (APIM) {background-color="#fde74c"}
 
 ## Actor-Partner Interdependence Model (APIM) {background-color="#9bc53d"}
@@ -398,6 +465,31 @@ sjPlot::tab_model(
 -   Distinguishable and indistinguishable
 -   The trick for indistinguishable dyads is to constraint the parameters to be equal. It results in one actor effect and one partner effect.
 -   The null model for dyadic analysis is not the all-free model. The null model should have constrained the means and variances of the actors.
+
+## Activity: Design Your Own APIM {background-color="#e8f5e9"}
+
+:::: {.callout-tip}
+## In groups of 3--4, design an APIM study
+::::
+
+Answer the following for a dyadic relationship of your choice:
+
+::: {.incremental}
+1. **Who is the dyad?** (e.g., parent-child, romantic partners, coach-athlete)
+2. **Distinguishable or indistinguishable?** Why?
+3. **What is X (the predictor)?** (e.g., stress, communication style)
+4. **What is Y (the outcome)?** (e.g., well-being, performance)
+5. **What would a significant *actor effect* mean in plain language?**
+6. **What would a significant *partner effect* mean?**
+7. **Which effect do you hypothesize to be larger?** Why?
+:::
+
+. . .
+
+:::: {.callout-note}
+## Share out
+Each group presents their APIM in 2 minutes. Class votes on the most creative research question.
+::::
 
 # Structural Equation Model Approach {background-color="#fde74c"}
 
@@ -419,7 +511,29 @@ sjPlot::tab_model(
 
 -   What is the correlation between dyads?
 
-## Aditional resources
+## Activity: Explore the APIM Shiny App {background-color="#e8f5e9"}
+
+:::: {.callout-tip}
+## Hands-On Exploration
+Open the [Shiny APIM App](https://davidakenny.shinyapps.io/APIM_MM/) and work through the following tasks:
+::::
+
+::: {.incremental}
+1. **Enter the sample data** from our class example (or use the app defaults)
+2. **Set the dyad type** to distinguishable --- run the model and note the actor and partner effects
+3. **Switch to indistinguishable** --- what changes in the output? Why?
+4. **Experiment**: What happens to the partner effect when you increase the correlation between partners' predictors?
+5. **Interpret**: Write one sentence summarizing the actor effect and one sentence for the partner effect
+:::
+
+. . .
+
+:::: {.callout-warning}
+## Reflection
+How do the results from the Shiny app compare to what you would get from a simple regression ignoring the dyadic structure?
+::::
+
+## Additional Resources
 
 -   ["How to Use the Actor-Partner Interdependence Model (APIM) To Estimate Different Dyadic Patterns in MPLUS: A Step-by-Step Tutorial"](https://www.tqmp.org/RegularArticles/vol12-1/p074/p074.pdf)
 
