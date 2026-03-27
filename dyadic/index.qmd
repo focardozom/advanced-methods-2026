@@ -1,35 +1,64 @@
 ---
 title: "Dyadic Data Analysis"
+subtitle: "Actor-Partner Interdependence and Multilevel Approaches"
+author: "Francisco Cardozo, PhD"
 date: "2026-03-27"
 ---
-
-**Date:** Mar 27
 
 ## Overview
 
 Analysis of dyadic data focuses on the interdependence between two individuals (e.g., couples, friends, siblings). We will explore methods to handle this non-independence and model the relationships between dyad members.
 
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Distinguish between distinguishable and indistinguishable dyads
+2. Identify sources of dyadic variability (between vs. within)
+3. Test for non-independence and compute the Intraclass Correlation (ICC)
+4. Fit multilevel models for dyadic data in R
+5. Understand and apply the Actor-Partner Interdependence Model (APIM)
+6. Implement the SEM approach for dyadic analysis
+
 ## Topics
+
 -   Distinguishable vs. Indistinguishable Dyads
 -   Dyadic Variability (Between vs. Within)
--   Non-independence and Interclass Correlation (ICC)
+-   Non-independence and Intraclass Correlation (ICC)
 -   Multilevel Modeling for Dyads
 -   Actor-Partner Interdependence Model (APIM)
 -   Structural Equation Modeling (SEM) approach
 
+## Materials
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-tip appearance="simple" icon=false}
 ## Slides
 
-[View Class Slides](slides.qmd)
+Access the class presentation slides:
 
-## Homework
+[View Class Slides](slides.qmd){.btn .btn-primary .btn-lg role="button" style="width: 100%;"}
+:::
+:::
+
+::: {.g-col-12 .g-col-md-6}
+::: {.callout-warning appearance="simple" icon=false}
+## Assignment
+
 **Assignment #8:** Conduct dyadic data analysis in Mplus. Due next week.
+:::
+:::
+
+:::
 
 ## Readings
 
 ### Required
 -   Kenny, David & Kashy, Deborah & Cook, William & Simpson, Jeffry. (2006). *Dyadic Data Analysis*. [Pages 25-32 and Chapter 5]
 
-### Additional Resources
+### Supplemental
 -   [David Kenny's Dyadic Data Website](http://www.davidakenny.net/dyad.htm)
 -   [Shiny APIM App](https://davidakenny.shinyapps.io/APIM_MM/)
 -   [Quantitude Podcast: The Actor-Partner Interdependence Model](https://quantitudepod.org/s3e13-the-actor-partner-interdependence-model/)
