@@ -7,20 +7,21 @@ date: today
 
 ## Overview
 
-In this assignment you will simulate dyadic data—a child and their mother—measuring optimism about the future. You will then recover the true latent correlation using two different analytic strategies: Confirmatory Factor Analysis (CFA) and a Multilevel Model (MLM). Comparing the two approaches will deepen your understanding of when and why they yield similar or different estimates.
+In this assignment you will simulate dyadic data (a child and their mother) measuring optimism about the future. You will then estimate the correlation between child and mother optimism using **one** of two analytic strategies: Confirmatory Factor Analysis (CFA) **or** a Multilevel Model (MLM).
 
 ## Learning Objectives
 
-- Simulate multivariate data with a known latent correlation structure
-- Fit a dyadic CFA and interpret the latent factor correlation
-- Fit a multilevel model to dyadic (pairwise) data and extract the intraclass correlation
-- Compare CFA and MLM estimates against a known population parameter
+- Simulate dyadic data with a known correlation structure
+- Estimate the dyadic association using **one** of two approaches:
+  - Fit a dyadic CFA and interpret the latent factor correlation, **or**
+  - Fit a multilevel model to dyadic (pairwise) data and extract the intraclass correlation
+- Compare your estimate against the known population parameter and reflect on your chosen approach
 
 ## Instructions
 
 ### Part 1: Data Simulation (25 points)
 
-Generate a dataset of **300 child–mother dyads**. Each individual answers **four continuous items** measuring optimism about the future. The true latent correlation between child optimism and mother optimism is **ρ = 0.70**.
+Generate a dataset of **300 child–mother dyads**. Each individual answers **four continuous items** measuring optimism about the future. The true correlation between child optimism and mother optimism is **ρ = 0.40**.
 
 Use the simulation code below as your starting point. **Replace `YOUR_STUDENT_ID` with your actual student ID** so that every student has a unique dataset.
 
@@ -32,32 +33,31 @@ library(tidyverse)
 set.seed(YOUR_STUDENT_ID)
 n <- 300
 
-# --- Latent factors (correlated at r = 0.70) ---
-eta_child  <- rnorm(n)
-eta_mother <- 0.70 * eta_child + sqrt(1 - 0.70^2) * rnorm(n)
+# --- Latent factors (correlated at r = 0.40) ---
+eta_child <- rnorm(n)
+eta_mother <- 0.40 * eta_child + sqrt(1 - 0.40^2) * rnorm(n)
 
-# Verify the population-level correlation is close to 0.70
-cor(eta_child, eta_mother)
-
-# --- Factor loadings ---
+# --- Factor loadings and residual correlation ---
 lambda <- c(0.80, 0.75, 0.70, 0.65)
+r_resid <- 0.25
 
 # --- Generate observed items ---
-items <- map_dfc(1:4, \(j) {
-    e_child  <- rnorm(n)
-    e_mother <- rnorm(n)
+items <- map(1:4, \(j) {
+    e_child <- rnorm(n)
+    e_mother <- r_resid * e_child + sqrt(1 - r_resid^2) * rnorm(n)
 
     tibble(
-        "C{j}" := lambda[j] * eta_child  + sqrt(1 - lambda[j]^2) * e_child,
+        "C{j}" := lambda[j] * eta_child + sqrt(1 - lambda[j]^2) * e_child,
         "M{j}" := lambda[j] * eta_mother + sqrt(1 - lambda[j]^2) * e_mother
     )
-})
+}) |>
+    list_cbind()
 
 # --- Add dyad ID and total scores ---
 dyad_data <- items |>
     mutate(
         dyad_id = 1:n,
-        child_total  = (C1 + C2 + C3 + C4) / 4,
+        child_total = (C1 + C2 + C3 + C4) / 4,
         mother_total = (M1 + M2 + M3 + M4) / 4,
         .before = 1
     )
@@ -65,17 +65,35 @@ dyad_data <- items |>
 dyad_data |> head(8)
 ```
 
-**Deliverables:**
+::: {.callout-important title="Deliverables"}
+1. Show the first few rows of your simulated dataset
+2. Report descriptive statistics (mean and SD) for the child and mother total scores
+3. Report the Pearson correlation between `child_total` and `mother_total`
+:::
 
-1. Report the sample correlation between `eta_child` and `eta_mother` (before adding measurement error)
-2. Report the correlation between `child_total` and `mother_total` (after measurement error)
-3. Explain in 1–2 sentences why the total-score correlation is lower than the latent correlation
+::: {.callout-tip title="AI Prompt for Descriptive Statistics"}
+You are welcome to use AI tools to generate code for descriptive statistics and tables. When prompting, **provide context about the research, the data structure, and the purpose of the analysis**. Here is an example prompt you can adapt:
 
-### Part 2: Confirmatory Factor Analysis (35 points)
+*"I am studying the association between child and mother optimism about the future in a sample of 300 child–mother dyads. My data frame is called `dyad_data` with one row per dyad. It contains `C1`–`C4` (4 child items), `M1`–`M4` (4 mother items), `child_total` (mean of C1–C4), `mother_total` (mean of M1–M4), and `dyad_id`. I need to report descriptive statistics (mean and SD) for both total scores and the Pearson correlation between them, because I want to establish a baseline estimate of the dyadic association before fitting a more complex model. Using tidyverse and gt or gtsummary, write R code to produce these tables and explain what the output means."*
+
+**Tip:** Always include the variable names, the data frame name, the sample size, and a description of what the data represent. Asking the AI to **explain the output** helps you verify that the code is doing what you expect.
+:::
+
+::: {.callout-note title="A Note on Using AI"}
+Using AI to generate code is perfectly fine for this assignment. However, you should understand what the code is doing. Once AI generates a solution, take the time to read through it, explore it, modify it, or try a different approach to accomplish the same task. The goal is to learn, not just to produce output.
+:::
+
+### Part 2: Dyadic Analysis — Choose ONE (60 points)
+
+Choose **one** of the two options below. You will estimate the dyadic association using either a CFA or a Multilevel Model.
+
+#### Option A: Confirmatory Factor Analysis
+
+![Dyadic CFA Model](images/cfa_dyadic.svg){width="80%"}
 
 Fit a dyadic CFA in which child optimism and mother optimism are modeled as separate latent factors. You may use **lavaan or Mplus** (or both for extra credit).
 
-#### Option A: lavaan
+##### lavaan
 
 ```{r}
 #| echo: true
@@ -89,6 +107,12 @@ cfa_model <- "
 
   # Latent correlation
   child ~~ mother
+
+  # Correlated residuals across matching items
+  C1 ~~ M1
+  C2 ~~ M2
+  C3 ~~ M3
+  C4 ~~ M4
 "
 
 cfa_fit <- cfa(
@@ -100,7 +124,7 @@ cfa_fit <- cfa(
 summary(cfa_fit, standardized = TRUE, fit.measures = TRUE)
 ```
 
-#### Option B: Mplus
+##### Mplus
 
 Save the data for Mplus:
 
@@ -132,21 +156,27 @@ MODEL:
 
   CHILD WITH MOTHER;
 
+  ! Correlated residuals across matching items
+  C1 WITH M1;
+  C2 WITH M2;
+  C3 WITH M3;
+  C4 WITH M4;
+
 OUTPUT: STDYX CINTERVAL;
 ```
 
-**Deliverables:**
-
+::: {.callout-important title="CFA Deliverables"}
 1. Report your model syntax
 2. Report model fit indices (χ², df, p-value, CFI, TLI, RMSEA, SRMR)
 3. Report the standardized factor loadings for all 8 items
 4. Report the estimated latent correlation between CHILD and MOTHER with its 95% confidence interval
+:::
 
-### Part 3: Multilevel Model (35 points)
+#### Option B: Multilevel Model
 
-Now estimate the dyadic association using a multilevel framework. The key idea is to restructure the data so that each row is one *person* (child or mother) nested within a *dyad*.
+Estimate the dyadic association using a multilevel framework. The key idea is to restructure the data so that each row is one *person* (child or mother) nested within a *dyad*.
 
-#### Step 1: Reshape to Long Format
+##### Step 1: Reshape to Long Format
 
 ```{r}
 #| echo: true
@@ -166,7 +196,7 @@ dyad_long <- dyad_data |>
 dyad_long |> head(8)
 ```
 
-#### Step 2: Fit the Multilevel Model
+##### Step 2: Fit the Multilevel Model
 
 Fit a model with optimism as the outcome, a fixed effect for role (to account for mean differences between children and mothers), and a random intercept for dyad:
 
@@ -183,7 +213,7 @@ mlm_fit <- lmer(
 summary(mlm_fit)
 ```
 
-#### Step 3: Compute the ICC
+##### Step 3: Compute the ICC
 
 Extract the variance components and compute the intraclass correlation:
 
@@ -194,7 +224,7 @@ vc <- VarCorr(mlm_fit) |> as_tibble()
 
 icc <- vc |>
     summarise(
-        sigma2_dyad    = vcov[grp == "dyad_id"],
+        sigma2_dyad = vcov[grp == "dyad_id"],
         sigma2_residual = vcov[grp == "Residual"],
         icc = sigma2_dyad / (sigma2_dyad + sigma2_residual)
     )
@@ -204,42 +234,21 @@ icc |>
     print()
 ```
 
-The ICC from this model represents how much of the total variance in optimism scores is shared within dyads—this is the multilevel estimate of the dyadic correlation.
+With exactly two members per dyad, the ICC from the random-intercept model is the estimate of the dyadic correlation. It represents the proportion of total variance in optimism that is shared between child and mother within the same dyad, assuming equal variances across roles.
 
-**Deliverables:**
-
+::: {.callout-important title="MLM Deliverables"}
 1. Report the variance components (between-dyad and within-dyad)
-2. Report the ICC value
+2. Report the ICC and interpret it as the dyadic correlation
 3. Report the fixed effect for role and interpret it (do children and mothers differ in average optimism?)
+:::
 
-### Part 4: Compare and Reflect (5 points)
+## Want to Go Deeper?
 
-Create a comparison table and answer the reflection questions.
+If you want to challenge yourself further, try one or more of the following:
 
-**Comparison table:**
-
-| Method | Estimated Correlation | True Value (ρ) | Bias |
-|--------|----------------------|----------------|------|
-| Total-score Pearson *r* | ? | 0.70 | ? |
-| CFA latent correlation | ? | 0.70 | ? |
-| MLM intraclass correlation | ? | 0.70 | ? |
-
-*Note: Bias = Estimated − True*
-
-**Reflection questions:**
-
-1. Which method produced the estimate closest to the true correlation of 0.70? Why do you think that is?
-2. The total-score correlation is typically *attenuated* (biased downward) compared to the latent correlation. Explain why, referencing measurement error.
-3. The MLM uses total scores rather than latent variables. Would you expect the MLM-based ICC to be closer to the CFA estimate or to the Pearson *r*? Explain.
-4. Under what conditions might you prefer the CFA approach over the MLM approach for estimating dyadic associations, and vice versa?
-
-## Extra Credit (10 points)
-
-Choose **one** of the following:
-
-1. **Factor scores in the MLM**: Instead of total scores, extract factor scores from a single-group CFA (separate for child and mother) and use them in the multilevel model. Does this improve recovery of the true correlation?
+1. **Complete the other approach**: If you chose the CFA, also fit the MLM (and vice versa). Compare the two estimates and discuss which is closer to the true value and why.
 2. **Test measurement invariance**: Constrain the factor loadings to be equal across child and mother (i.e., `(L1-L4)` labels in Mplus, or `group` in lavaan). Compare the constrained and free models using a chi-square difference test.
-3. **Both approaches in both software**: Run the CFA in both lavaan and Mplus, and compare the results.
+3. **Both software packages**: Run the CFA in both lavaan and Mplus, and compare the results.
 
 ## Submission
 
@@ -247,15 +256,12 @@ Submit a **Word document** (`.docx`) or **PDF** containing:
 
 1. Your R script or Quarto document with all code
 2. Your Mplus input and output files (if using Mplus)
-3. All tables, results, and reflection answers organized by part
+3. All tables and results organized by part
 
 ## Grading Rubric
 
 | Component | Points |
 |-----------|--------|
 | Part 1: Data simulation and descriptive correlations | 25 |
-| Part 2: CFA — model specification, fit, and interpretation | 35 |
-| Part 3: MLM — model specification, ICC, and interpretation | 35 |
-| Part 4: Comparison table and reflection | 5 |
+| Part 2: Dyadic analysis (CFA **or** MLM) — model specification and interpretation | 75 |
 | **Total** | **100** |
-| Extra credit | +10 |
