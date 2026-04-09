@@ -31,6 +31,7 @@ jobs:
         with:
           packages: |
             any::tidyverse
+            any::broom
             any::haven
             any::writexl
             any::arrow
@@ -44,6 +45,12 @@ jobs:
             any::lmerTest
             any::broom.mixed
             any::geepack
+            any::gt
+            any::here
+            any::skimr
+            any::tidymodels
+            any::table1
+            any::tidyREDCap
 
       - name: Setup Quarto
         uses: quarto-dev/quarto-actions/setup@v2

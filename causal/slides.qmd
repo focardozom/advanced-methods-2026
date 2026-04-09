@@ -1,198 +1,1187 @@
 ---
 title: "Causal Inference"
-subtitle: "Experimental and Quasi-experimental Designs"
-author: "Francisco Cardozo"
+subtitle: "From Association to Causation"
+author: "Francisco Cardozo, PhD"
+brand: false
+engine: knitr
 format:
   revealjs:
-    theme: simple
-    logo: "../images/umlogo.svg"
+    theme: [simple, slides-styles.scss]
+    logo: "../images/umlogo.png"
     footer: "EPH 752 Advanced Research Methods"
+    chalkboard: true
     slide-number: true
     show-slide-number: all
-    chalkboard: true
     link-external-newwindow: true
+    code-overflow: wrap
+    scrollable: true
 editor_options:
   chunk_output_type: console
 ---
 
-## 1. Observational Studies & Propensity Scores ⚖️
-
-Observational studies analyze relationships between variables without intervening in treatment assignment. 
-
-**Propensity Score**: A statistical tool to control for selection bias and obtain more precise treatment effect estimates.
-
-## Conceptual Stage
-
--   Formulate the **causal question**.
--   Use the **potential outcomes framework**.
--   "As if" it were a randomized experiment.
-
-## Design Stage
-
--   Reconstruct/approximate a randomized experiment design.
--   Goal: **Independence** between treatment assignment and covariates.
--   Techniques: Matching, Stratification, Weighting (IPW).
--   **Balance Diagnosis**: Verify covariates are balanced between groups.
-
-## Statistical Analysis Stage
-
--   Compare results between treatment and control groups.
--   Use appropriate statistical models (regression, etc.).
--   Adjust for propensity scores to handle selection bias.
-
-## Example: Alcohol & Marijuana Use
-
-> **Research Question:** What is the effect of alcohol consumption on marijuana use initiation?
-
-Data: Selected from YRBS (Youth Risk Behavior Survey).
-
--   **Treatment**: Alcohol use (0/1)
--   **Outcome**: Marijuana use (0/1)
--   **Confounders**: Age, Sex, Other drug use (Cigarettes, Cocaine, Heroin, etc.)
-
-## Hypothetical Scenarios
-
-1.  **No Design**: Use all available data (Naive estimate).
-2.  **Exclusion**: Remove outliers (e.g., polydrug users).
-3.  **Stratified**: Randomize within blocks (e.g., by gender).
-4.  **Propensity Score/IPW**: Reconstruct a randomized experiment using weighting.
-5.  **Control for baseline**: Intervene on non-users.
-
-## Scenario 1: Naive Estimate
-
 ```{r}
-#| echo: true
-#| eval: false
+#| echo: false
+#| include: false
 
-glm(marijuana ~ alcohol, data = data_2019, family = "binomial") %>%
-    tidy(exp = T, conf.int = T)
+library(tidyverse)
+library(broom)
+library(knitr)
+
+set.seed(2026)
 ```
 
-*Problem*: Ignores all confounding variables.
+# Part I: The Causal Question {background-color="#005030"}
 
-## Scenario 4: Inverse Probability Weighting (IPW)
+## Why Causation Matters {.smaller}
 
-**Step 1: Estimate Propensity Score**
+:::: columns
+::: {.column width="50%"}
 
-Model the probability of receiving treatment (alcohol) given covariates.
+Most research questions in public health are <mark>causal</mark>:
+
+- Does smoking **cause** lung cancer?
+- Does a prevention program **reduce** substance use?
+- Does Medicaid expansion **improve** health outcomes?
+
+Yet most of our data is <mark>observational</mark>. We see associations, but associations can be misleading.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-warning}
+## The Fundamental Problem
+
+**Association $\neq$ Causation**
+
+Ice cream sales and drowning deaths are correlated. This does not mean ice cream causes drowning — both are driven by summer heat (a confounder).
+
+The challenge of causal inference is extracting the **causal signal** from observational data where confounders lurk.
+:::
+
+:::
+::::
+
+## The Potential Outcomes Framework {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+The <mark>Rubin Causal Model</mark> defines causation through **potential outcomes**:
+
+For each individual $i$:
+
+- $Y_i(1)$: the outcome if **treated**
+- $Y_i(0)$: the outcome if **not treated**
+
+The <mark>individual causal effect</mark> is:
+
+$$\tau_i = Y_i(1) - Y_i(0)$$
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## The Fundamental Problem of Causal Inference
+
+We can **never** observe both $Y_i(1)$ and $Y_i(0)$ for the same individual. Each person is either treated or not — we only see **one** potential outcome.
+
+| Person | $Y(1)$ | $Y(0)$ | $\tau$ |
+|--------|--------|--------|--------|
+| Alice  | 8      | ?      | ?      |
+| Bob    | ?      | 5      | ?      |
+| Carol  | 7      | ?      | ?      |
+| Dave   | ?      | 4      | ?      |
+
+The missing values are the **counterfactual** — what *would have happened* under the other condition.
+:::
+
+:::
+::::
+
+## Average Treatment Effects {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Since individual effects are unobservable, we focus on <mark>average</mark> effects:
+
+**Average Treatment Effect (ATE)**:
+
+$$\text{ATE} = E[Y(1) - Y(0)] = E[Y(1)] - E[Y(0)]$$
+
+The average causal effect across the entire population.
+
+**Average Treatment Effect on the Treated (ATT)**:
+
+$$\text{ATT} = E[Y(1) - Y(0) \mid T = 1]$$
+
+The average effect among those who actually received treatment.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## Why the Distinction Matters
+
+ATE and ATT are the <mark>same</mark> when treatment is randomly assigned (because treated and untreated groups are exchangeable).
+
+They <mark>differ</mark> in observational studies when the people who select into treatment are systematically different from those who don't.
+
+**Example**: People who choose to exercise (treated) may be healthier at baseline. The effect of exercise *among exercisers* (ATT) may differ from the effect *if everyone exercised* (ATE).
+:::
+:::
+::::
+
+## Randomization: The Gold Standard {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+In a <mark>randomized experiment</mark>, treatment assignment is independent of potential outcomes:
+
+$$T \perp\!\!\!\perp \{Y(1), Y(0)\}$$
+
+This means:
+
+- $E[Y(1) \mid T=1] = E[Y(1)]$
+- $E[Y(0) \mid T=0] = E[Y(0)]$
+
+So the <mark>simple difference in means</mark> identifies the ATE:
+
+$$\hat{\text{ATE}} = \bar{Y}_{T=1} - \bar{Y}_{T=0}$$
+
+:::
+
+::: {.column width="50%"}
+
+Randomization works because it creates <mark>balance</mark> on all covariates — both observed and unobserved — between treatment and control groups.
+
+```{r}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 4
+
+set.seed(2026)
+n <- 500
+rct_data <- tibble(
+    age = rnorm(n, 40, 10),
+    treatment = sample(c(0, 1), n, replace = TRUE)
+) |>
+    mutate(treatment_label = ifelse(treatment == 1, "Treated", "Control"))
+
+ggplot(rct_data, aes(x = age, fill = treatment_label)) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(
+        values = c("Control" = "#005030", "Treated" = "#F47321")
+    ) +
+    labs(
+        x = "Age",
+        y = "Density",
+        fill = "Group",
+        title = "Randomization Balances Covariates"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "top")
+```
+
+:::
+::::
+
+## Simulation: Why Randomization Works {.smaller}
+
+Let's simulate a world where we know the truth. A prevention program reduces risk scores by <mark>5 points</mark>, but sicker people are more likely to seek treatment:
 
 ```{r}
 #| echo: true
-#| eval: false
 
-# Recipe including all confounders
-formula_ps <- recipe(
-    alcohol ~ age + sex + q30 + q50 + q51 + q52 + q53 + q54 + q55 + q56 + q57,
-    data = data_2019
+set.seed(2026)
+n <- 2000
+true_effect <- -5
+
+sim_data <- tibble(
+    baseline_risk = rnorm(n, 50, 10),
+    treatment_rct = sample(c(0, 1), n, replace = TRUE),
+    treatment_obs = rbinom(n, 1, plogis(-2 + 0.06 * baseline_risk)),
+    y_rct = baseline_risk + true_effect * treatment_rct + rnorm(n, 0, 5),
+    y_obs = baseline_risk + true_effect * treatment_obs + rnorm(n, 0, 5)
+)
+```
+
+- `treatment_rct`: randomly assigned (coin flip)
+- `treatment_obs`: assigned based on `baseline_risk` (sicker people more likely to be treated)
+
+## What Happens When We Estimate? {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Randomized experiment</mark>:
+
+```{r}
+#| echo: true
+
+lm(y_rct ~ treatment_rct, data = sim_data) |>
+    tidy(conf.int = TRUE) |>
+    filter(term == "treatment_rct") |>
+    select(term, estimate, std.error, conf.low, conf.high) |>
+    mutate(across(where(is.numeric), \(x) round(x, 2))) |>
+    kable()
+```
+
+The estimate is close to the true effect of $-5$.
+
+:::
+
+::: {.column width="50%"}
+
+<mark>Observational study</mark> (naive estimate):
+
+```{r}
+#| echo: true
+
+lm(y_obs ~ treatment_obs, data = sim_data) |>
+    tidy(conf.int = TRUE) |>
+    filter(term == "treatment_obs") |>
+    select(term, estimate, std.error, conf.low, conf.high) |>
+    mutate(across(where(is.numeric), \(x) round(x, 2))) |>
+    kable()
+```
+
+The estimate is <mark>biased</mark> — it may even have the wrong sign! Sicker people select into treatment, confounding the effect.
+
+:::
+::::
+
+. . .
+
+> The same treatment, the same effect, but <mark>confounding</mark> from selection bias distorts the observational estimate. This is why we need causal inference methods.
+
+# Part II: Observational Studies & Selection Bias {background-color="#F47321"}
+
+## Rubin's Three Stages {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Donald Rubin's framework for causal inference from observational data involves three sequential stages:
+
+**1. Conceptual Stage**
+
+- Formulate the <mark>causal question</mark>
+- Define treatment, outcome, and the potential outcomes
+- Think "as if" designing a randomized experiment
+
+**2. Design Stage**
+
+- Reconstruct a <mark>quasi-randomized</mark> comparison
+- Goal: make treatment assignment *as if* independent of covariates
+- Techniques: matching, stratification, weighting
+
+:::
+
+::: {.column width="50%"}
+
+**3. Analysis Stage**
+
+- Compare outcomes between treatment and control groups
+- Use statistical models adjusted for the design
+- Conduct sensitivity analyses
+
+::: {.callout-important}
+## Key Principle
+
+The <mark>design</mark> stage should be done **without looking at outcomes**. Like designing an RCT before collecting data, the goal is to construct balanced groups **before** estimating effects. This prevents researchers from fishing for designs that yield desired results.
+:::
+:::
+::::
+
+## Selection Bias: A Closer Look {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Selection bias</mark> occurs when the treated and untreated groups differ systematically on characteristics that also affect the outcome.
+
+$$E[Y \mid T=1] - E[Y \mid T=0] = \underbrace{\text{ATE}}_{\text{causal}} + \underbrace{\text{Bias}}_{\text{selection}}$$
+
+The naive difference in means conflates the treatment effect with pre-existing differences between groups.
+
+:::
+
+::: {.column width="50%"}
+
+Let's see this with our simulated data:
+
+```{r}
+#| echo: true
+
+sim_data |>
+    summarise(
+        mean_risk = round(mean(baseline_risk), 1),
+        n = n(),
+        .by = treatment_obs
+    ) |>
+    mutate(group = ifelse(treatment_obs == 1, "Treated", "Control")) |>
+    select(group, mean_risk, n) |>
+    kable()
+```
+
+The treated group has a <mark>higher</mark> baseline risk (they were sicker to begin with). Any naive comparison is contaminated by this imbalance.
+
+:::
+::::
+
+## Key Assumptions for Causal Inference {.smaller}
+
+To identify causal effects from observational data, we need three assumptions:
+
+:::: columns
+::: {.column width="33%"}
+
+::: {.callout-note}
+## 1. Ignorability (No Unmeasured Confounding)
+
+$$T \perp\!\!\!\perp \{Y(1), Y(0)\} \mid X$$
+
+Conditional on observed covariates $X$, treatment assignment is "as if" random. This is the <mark>strongest</mark> and most untestable assumption.
+:::
+
+:::
+
+::: {.column width="33%"}
+
+::: {.callout-note}
+## 2. Positivity (Overlap)
+
+$$0 < P(T=1 \mid X=x) < 1$$
+
+For every combination of covariate values, there is a <mark>nonzero probability</mark> of receiving either treatment or control. No subgroup is deterministically assigned.
+:::
+
+:::
+
+::: {.column width="34%"}
+
+::: {.callout-note}
+## 3. SUTVA (Stable Unit Treatment Value)
+
+Each individual's potential outcomes are <mark>not affected</mark> by other individuals' treatment assignments (no interference), and there is only <mark>one version</mark> of each treatment level.
+:::
+
+:::
+::::
+
+. . .
+
+> If these assumptions hold, we can use propensity score methods to estimate causal effects. If they don't — especially ignorability — our estimates may still be biased.
+
+# Part III: Propensity Score Methods {background-color="#005030"}
+
+## What Is a Propensity Score? {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+The <mark>propensity score</mark> is the probability of receiving treatment given observed covariates:
+
+$$e(X_i) = P(T_i = 1 \mid X_i)$$
+
+Rosenbaum and Rubin (1983) showed that if ignorability holds given $X$, it also holds given $e(X)$:
+
+$$T \perp\!\!\!\perp \{Y(1), Y(0)\} \mid e(X)$$
+
+This is powerful: instead of balancing on many covariates simultaneously, we can balance on a <mark>single scalar</mark>.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## Intuition
+
+The propensity score summarizes all measured confounders into one number. Two individuals with the same propensity score, one treated and one untreated, are like a mini randomized comparison.
+
+Think of it as creating an "apples-to-apples" comparison: matching a treated person who had a 70% chance of being treated with an untreated person who *also* had a 70% chance.
+:::
+
+**Common uses of propensity scores:**
+
+| Method | How PS is used |
+|--------|---------------|
+| **Matching** | Pair treated and untreated with similar $e(X)$ |
+| **Stratification** | Group by PS quintiles, compare within strata |
+| **Weighting (IPW)** | Weight observations by inverse of PS |
+| **Regression adjustment** | Include PS as a covariate |
+
+:::
+::::
+
+## Step 1: Estimate the Propensity Score {.smaller}
+
+We estimate $e(X)$ with a logistic regression of treatment on confounders:
+
+```{r}
+#| echo: true
+
+ps_model <- glm(
+    treatment_obs ~ baseline_risk,
+    data = sim_data,
+    family = binomial
 )
 
-# Logistic regression
-logistic <- logistic_reg() %>% set_engine("glm")
+sim_data <- sim_data |>
+    mutate(ps = predict(ps_model, type = "response"))
+
+tidy(ps_model) |>
+    mutate(across(where(is.numeric), \(x) round(x, 3))) |>
+    kable()
 ```
 
-## Step 2: Check Common Support
+. . .
 
-Ensure there is overlap in the probability of treatment between groups.
+Higher baseline risk $\to$ higher probability of treatment, confirming the selection mechanism.
+
+## Step 2: Check Common Support (Overlap) {.smaller}
+
+Before using propensity scores, we must verify that both groups have <mark>overlapping</mark> distributions:
 
 ```{r}
 #| echo: true
-#| eval: false
+#| fig-width: 10
+#| fig-height: 4.5
 
-# Histogram of propensity scores by group
-to_ipw %>%
-    ggplot(aes(.pred_Yes, fill = alcohol)) +
-    geom_histogram(position = position_dodge(), binwidth = 0.05)
+sim_data |>
+    mutate(group = ifelse(treatment_obs == 1, "Treated", "Control")) |>
+    ggplot(aes(x = ps, fill = group)) +
+    geom_histogram(
+        position = position_dodge(),
+        bins = 40,
+        alpha = 0.7
+    ) +
+    scale_fill_manual(
+        values = c("Control" = "#005030", "Treated" = "#F47321")
+    ) +
+    labs(
+        x = "Propensity Score",
+        y = "Count",
+        fill = "Group",
+        title = "Propensity Score Distributions by Treatment Group"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "top")
 ```
 
-## Step 3: Calculate Weights
+Good overlap means for any propensity score value, we have both treated and untreated individuals to compare.
 
-$$w = \frac{T}{e(X)} + \frac{1-T}{1-e(X)}$$
+## Step 3: Inverse Probability Weighting (IPW) {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+IPW creates a <mark>pseudo-population</mark> where treatment is independent of confounders by weighting each observation by the inverse of their probability of receiving the treatment they actually received.
+
+**Intuition**: A treated person with a *low* propensity score is "surprising" — they received treatment despite having characteristics that usually lead to no treatment. They get a <mark>large weight</mark> because they represent many similar people in the population who would not have been treated.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-note}
+## Why This Works
+
+In the weighted pseudo-population:
+
+- Treated individuals who "look like" controls get upweighted
+- Control individuals who "look like" treated get upweighted
+
+This breaks the association between covariates and treatment, mimicking randomization.
+:::
+
+| Person | Treatment | $e(X)$ | Weight |
+|--------|-----------|--------|--------|
+| A      | 1         | 0.8    | $1/0.8 = 1.25$ |
+| B      | 1         | 0.2    | $1/0.2 = 5.00$ |
+| C      | 0         | 0.8    | $1/0.2 = 5.00$ |
+| D      | 0         | 0.2    | $1/0.8 = 1.25$ |
+
+:::
+::::
+
+## Step 3: Computing IPW Weights {.smaller}
 
 ```{r}
 #| echo: true
-#| eval: false
-data_ipw <- to_ipw |>
+
+sim_data <- sim_data |>
     mutate(
         ipw = case_when(
-            alcohol == "Yes" ~ 1 / .pred_Yes,
-            alcohol == "No" ~ 1 / (1 - .pred_Yes)
+            treatment_obs == 1 ~ 1 / ps,
+            treatment_obs == 0 ~ 1 / (1 - ps)
+        )
+    )
+
+sim_data |>
+    summarise(
+        min_weight = round(min(ipw), 2),
+        median_weight = round(median(ipw), 2),
+        max_weight = round(max(ipw), 2),
+        mean_weight = round(mean(ipw), 2),
+        .by = treatment_obs
+    ) |>
+    mutate(group = ifelse(treatment_obs == 1, "Treated", "Control")) |>
+    select(group, min_weight, median_weight, max_weight, mean_weight) |>
+    kable()
+```
+
+. . .
+
+::: {.callout-warning}
+## Watch for Extreme Weights
+
+Very large weights (from propensity scores near 0 or 1) can create instability. Common remedies include <mark>trimming</mark> (dropping extreme PS values) or <mark>stabilized weights</mark> that multiply by $P(T)$ or $P(1-T)$.
+:::
+
+## Step 4: Check Balance After Weighting {.smaller}
+
+The purpose of IPW is to create balance. Let's verify:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 4.5
+
+balance_data <- bind_rows(
+    sim_data |>
+        mutate(
+            group = ifelse(treatment_obs == 1, "Treated", "Control"),
+            method = "Unweighted"
         ),
-        ipw = importance_weights(ipw)
+    sim_data |>
+        mutate(
+            group = ifelse(treatment_obs == 1, "Treated", "Control"),
+            method = "IPW-Weighted"
+        )
+)
+
+unweighted_means <- sim_data |>
+    summarise(mean_risk = mean(baseline_risk), .by = treatment_obs)
+
+weighted_means <- sim_data |>
+    summarise(
+        mean_risk = weighted.mean(baseline_risk, w = ipw),
+        .by = treatment_obs
+    )
+
+bind_rows(
+    unweighted_means |> mutate(method = "Unweighted"),
+    weighted_means |> mutate(method = "IPW-Weighted")
+) |>
+    mutate(
+        group = ifelse(treatment_obs == 1, "Treated", "Control"),
+        mean_risk = round(mean_risk, 2)
+    ) |>
+    select(method, group, mean_risk) |>
+    pivot_wider(names_from = group, values_from = mean_risk) |>
+    mutate(Difference = Treated - Control) |>
+    kable()
+```
+
+. . .
+
+After weighting, the groups are <mark>balanced</mark> on baseline risk (the confounding is removed).
+
+## Step 5: Estimate the Causal Effect {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+Now we estimate the treatment effect using the IPW-weighted regression:
+
+```{r}
+#| echo: true
+
+ipw_model <- lm(
+    y_obs ~ treatment_obs,
+    data = sim_data,
+    weights = ipw
+)
+
+bind_rows(
+    tidy(lm(y_obs ~ treatment_obs, data = sim_data)) |>
+        filter(term == "treatment_obs") |>
+        mutate(method = "Naive (unadjusted)"),
+    tidy(ipw_model) |>
+        filter(term == "treatment_obs") |>
+        mutate(method = "IPW-weighted")
+) |>
+    select(method, estimate, std.error) |>
+    mutate(
+        across(where(is.numeric), \(x) round(x, 2)),
+        true_effect = true_effect
+    ) |>
+    kable()
+```
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-tip}
+## Reading the Results
+
+- **Naive estimate**: biased because it doesn't account for selection
+- **IPW estimate**: much closer to the true effect of $-5$
+- The IPW successfully removed the confounding from baseline risk
+:::
+
+```{r}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 4
+
+tibble(
+    Method = c("Naive", "IPW", "Truth"),
+    Estimate = c(
+        coef(lm(y_obs ~ treatment_obs, data = sim_data))["treatment_obs"],
+        coef(ipw_model)["treatment_obs"],
+        true_effect
+    )
+) |>
+    mutate(Method = factor(Method, levels = c("Naive", "IPW", "Truth"))) |>
+    ggplot(aes(x = Method, y = Estimate, fill = Method)) +
+    geom_col(alpha = 0.8, width = 0.6) +
+    geom_hline(
+        yintercept = true_effect,
+        linetype = "dashed",
+        color = "red",
+        linewidth = 1
+    ) +
+    scale_fill_manual(
+        values = c("Naive" = "grey60", "IPW" = "#005030", "Truth" = "#F47321")
+    ) +
+    labs(
+        y = "Estimated Treatment Effect",
+        title = "Bias Correction via IPW"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none")
+```
+
+:::
+::::
+
+## The IPW Workflow: Summary {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 2
+
+tibble(
+    step = factor(
+        c(
+            "1. Estimate\nPropensity Score",
+            "2. Check\nOverlap",
+            "3. Compute\nIPW Weights",
+            "4. Check\nBalance",
+            "5. Estimate\nCausal Effect"
+        ),
+        levels = c(
+            "1. Estimate\nPropensity Score",
+            "2. Check\nOverlap",
+            "3. Compute\nIPW Weights",
+            "4. Check\nBalance",
+            "5. Estimate\nCausal Effect"
+        )
+    ),
+    x = 1:5,
+    y = 1
+) |>
+    ggplot(aes(x = x, y = y)) +
+    geom_tile(width = 0.85, height = 0.6, fill = "#005030", alpha = 0.85) +
+    geom_text(aes(label = step), color = "white", size = 4, fontface = "bold") +
+    geom_segment(
+        data = tibble(x = 1.5:4.5, xend = 1.5:4.5, y = 1, yend = 1),
+        aes(x = x - 0.07, xend = x + 0.07, y = y, yend = y),
+        arrow = arrow(length = unit(0.15, "cm")),
+        color = "#F47321",
+        linewidth = 1.5
+    ) +
+    xlim(0.3, 5.7) +
+    ylim(0.4, 1.6) +
+    theme_void()
+```
+
+| Step | Action | Key Check |
+|------|--------|-----------|
+| 1. Propensity Score | Logistic regression of $T$ on $X$ | Model includes all confounders |
+| 2. Overlap | Histogram of PS by group | Both groups span similar PS range |
+| 3. Weights | $w = T/e(X) + (1-T)/(1-e(X))$ | No extreme weights |
+| 4. Balance | Compare weighted covariate means | Standardized differences < 0.1 |
+| 5. Outcome | Weighted regression of $Y$ on $T$ | Interpret as ATE |
+
+::: {.callout-important}
+## The Critical Assumption
+
+All of this rests on <mark>no unmeasured confounding</mark>. If important confounders are missing from the propensity score model, the estimate remains biased. Always conduct **sensitivity analyses** to assess robustness.
+:::
+
+## Other Propensity Score Methods {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+**Propensity Score Matching**
+
+- Pair each treated individual with one or more untreated individuals with similar propensity scores
+- Most common: 1:1 nearest-neighbor matching
+- Estimates the <mark>ATT</mark> (effect on the treated)
+- Can discard unmatched controls, reducing sample size
+
+**Stratification (Subclassification)**
+
+- Divide the sample into strata (typically 5) based on PS quintiles
+- Estimate treatment effect within each stratum
+- Average across strata for an overall estimate
+- Cochran (1968): 5 strata remove ~90% of confounding bias
+
+:::
+
+::: {.column width="50%"}
+
+**Doubly Robust Estimation**
+
+- Combines propensity score weighting **and** outcome regression
+- Consistent if <mark>either</mark> the PS model or the outcome model is correctly specified
+- Provides an extra layer of protection against model misspecification
+
+::: {.callout-tip}
+## Practical Recommendation
+
+In practice, <mark>IPW</mark> is the most common starting point. If you suspect model misspecification, consider **doubly robust** methods. Use **matching** when you want interpretable 1:1 comparisons and the ATT is your target.
+
+R packages: `MatchIt`, `WeightIt`, `cobalt`, `CBPS`
+:::
+
+:::
+::::
+
+# Part IV: Difference-in-Differences {background-color="#F47321"}
+
+## The Idea Behind DiD {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+<mark>Difference-in-Differences (DiD)</mark> exploits a **natural experiment**: a policy or event that affects one group but not another.
+
+Instead of comparing treated vs. untreated at one point, we compare <mark>changes over time</mark>:
+
+$$\text{DiD} = \underbrace{(\bar{Y}_{T,\text{post}} - \bar{Y}_{T,\text{pre}})}_{\text{change in treated}} - \underbrace{(\bar{Y}_{C,\text{post}} - \bar{Y}_{C,\text{pre}})}_{\text{change in control}}$$
+
+The control group's change estimates what <mark>would have happened</mark> to the treated group without the intervention.
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## The Parallel Trends Assumption
+
+DiD requires that, in the absence of treatment, both groups would have followed <mark>parallel trajectories</mark>.
+
+We cannot test this directly (it's about a counterfactual), but we can check whether trends were parallel **before** the intervention.
+
+If pre-treatment trends diverge, DiD estimates are biased.
+:::
+
+:::
+::::
+
+## The DiD Estimator {.smaller}
+
+The regression formulation of DiD:
+
+$$Y_{it} = \beta_0 + \beta_1 \cdot \text{Treat}_i + \beta_2 \cdot \text{Post}_t + \beta_3 \cdot (\text{Treat}_i \times \text{Post}_t) + \varepsilon_{it}$$
+
+:::: columns
+::: {.column width="50%"}
+
+| Parameter | Interpretation |
+|-----------|---------------|
+| $\beta_0$ | Mean outcome for control group, pre-period |
+| $\beta_1$ | Pre-existing difference between groups |
+| $\beta_2$ | Time trend (common to both groups) |
+| $\beta_3$ | **DiD estimate** — the causal effect |
+
+:::
+
+::: {.column width="50%"}
+
+|  | Pre | Post | $\Delta$ |
+|--|-----|------|----------|
+| **Control** | $\beta_0$ | $\beta_0 + \beta_2$ | $\beta_2$ |
+| **Treated** | $\beta_0 + \beta_1$ | $\beta_0 + \beta_1 + \beta_2 + \beta_3$ | $\beta_2 + \beta_3$ |
+| **Difference** | $\beta_1$ | $\beta_1 + \beta_3$ | $\beta_3$ |
+
+The <mark>double difference</mark> removes both the time trend and the pre-existing group difference.
+
+:::
+::::
+
+## Simulating a DiD {.smaller}
+
+Let's simulate a policy that reduces substance use by <mark>3 percentage points</mark> in the treated state:
+
+```{r}
+#| echo: true
+
+set.seed(2026)
+n_per_cell <- 500
+true_did_effect <- -3
+
+did_data <- tibble(
+    state = rep(c("Treated State", "Control State"), each = n_per_cell * 2),
+    period = rep(rep(c("Pre", "Post"), each = n_per_cell), 2),
+    treat = ifelse(state == "Treated State", 1, 0),
+    post = ifelse(period == "Post", 1, 0)
+) |>
+    mutate(
+        y = 25 +
+            5 * treat +
+            (-2) * post +
+            true_did_effect * treat * post +
+            rnorm(n(), 0, 8)
     )
 ```
 
-## Step 4: Check Balance
+- Both states have a baseline trend (decreasing by 2 over time)
+- The treated state starts 5 points higher
+- The treatment effect is $-3$ (3-point reduction in the treated state, post-period)
 
-Verify that after weighting, the groups look similar on covariates.
+## Visualizing the DiD {.smaller}
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-height: 5
+
+did_means <- did_data |>
+    summarise(mean_y = mean(y), .by = c(state, period)) |>
+    mutate(period = factor(period, levels = c("Pre", "Post")))
+
+ggplot(did_means, aes(x = period, y = mean_y, color = state, group = state)) +
+    geom_point(size = 4) +
+    geom_line(linewidth = 1.2) +
+    geom_segment(
+        data = did_means |>
+            filter(state == "Treated State", period == "Post"),
+        aes(
+            x = "Post",
+            xend = "Post",
+            y = mean_y,
+            yend = mean_y - true_did_effect
+        ),
+        linetype = "dashed",
+        color = "grey50",
+        linewidth = 0.8,
+        arrow = arrow(length = unit(0.15, "cm"), ends = "both")
+    ) +
+    annotate(
+        "text",
+        x = 2.25,
+        y = did_means$mean_y[
+            did_means$state == "Treated State" &
+                did_means$period == "Post"
+        ] -
+            true_did_effect / 2,
+        label = paste0("DiD = ", true_did_effect),
+        color = "grey30",
+        size = 5,
+        fontface = "bold"
+    ) +
+    scale_color_manual(
+        values = c("Control State" = "#005030", "Treated State" = "#F47321")
+    ) +
+    labs(
+        x = "Period",
+        y = "Substance Use Prevalence (%)",
+        color = "Group",
+        title = "Difference-in-Differences Design",
+        subtitle = "The dashed arrow shows the treatment effect (DiD estimand)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "top")
+```
+
+## Estimating the DiD {.smaller}
 
 ```{r}
 #| echo: true
-#| eval: false
-# Run diagnostics on weighted data
-# ...
+
+did_model <- lm(y ~ treat + post + treat:post, data = did_data)
+
+tidy(did_model, conf.int = TRUE) |>
+    mutate(across(where(is.numeric), \(x) round(x, 2))) |>
+    kable()
 ```
 
-## Step 5: Estimate Causal Effect
+. . .
 
-Run the outcome model weighted by the IPW.
+:::: columns
+::: {.column width="50%"}
+
+The interaction term `treat:post` is our <mark>DiD estimate</mark>:
+
+- **Estimate**: close to the true effect of $-3$
+- **Interpretation**: The treated state experienced an additional `r round(coef(did_model)["treat:post"], 1)`-point change in substance use compared to the control state
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-note}
+## Reading the Other Coefficients
+
+- `treat`: the pre-existing difference between states ($\approx 5$)
+- `post`: the common time trend ($\approx -2$)
+- `treat:post`: the causal effect, net of the trend and the baseline difference
+:::
+
+:::
+::::
+
+## Checking the Parallel Trends Assumption {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+The parallel trends assumption cannot be tested directly, but we can check whether it held <mark>before</mark> the intervention using multiple pre-treatment periods:
+
+```{r}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 4
+
+set.seed(2026)
+multi_period <- expand_grid(
+    state = c("Treated", "Control"),
+    year = 2013:2020,
+    id = 1:200
+) |>
+    mutate(
+        treat = ifelse(state == "Treated", 1, 0),
+        post = ifelse(year >= 2018, 1, 0),
+        y = 30 +
+            4 * treat +
+            (-1.5) * (year - 2013) +
+            (-3) * treat * post +
+            rnorm(n(), 0, 6)
+    )
+
+multi_means <- multi_period |>
+    summarise(mean_y = mean(y), .by = c(state, year))
+
+ggplot(
+    multi_means,
+    aes(
+        x = year,
+        y = mean_y,
+        color = state,
+        group = state
+    )
+) +
+    geom_point(size = 3) +
+    geom_line(linewidth = 1) +
+    geom_vline(
+        xintercept = 2017.5,
+        linetype = "dashed",
+        color = "grey50"
+    ) +
+    annotate(
+        "text",
+        x = 2017.3,
+        y = 32,
+        label = "Intervention",
+        angle = 90,
+        vjust = -0.5,
+        color = "grey40",
+        size = 3.5
+    ) +
+    scale_color_manual(
+        values = c(
+            "Control" = "#005030",
+            "Treated" = "#F47321"
+        )
+    ) +
+    labs(
+        x = "Year",
+        y = "Outcome",
+        color = "Group",
+        title = "Pre-Trends Check"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top")
+```
+
+:::
+
+::: {.column width="50%"}
+
+<mark>What to look for:</mark>
+
+- **Parallel pre-trends**: Before the intervention (left of dashed line), both groups follow the same trajectory
+- **Divergence after**: After the intervention, the treated group deviates from the parallel path
+
+::: {.callout-warning}
+## When Parallel Trends Fails
+
+If pre-treatment trends diverge, DiD is biased. Possible remedies:
+
+1. **Add covariates** that explain the differential trend
+2. **Use a different control group** with more similar trends
+3. **Synthetic control methods** construct a weighted combination of control units that matches the treated unit's pre-trend
+4. **Report sensitivity analyses** showing how much violation is needed to change conclusions
+:::
+
+:::
+::::
+
+## DiD: Practical Considerations {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+**Strengths of DiD:**
+
+- Controls for all <mark>time-invariant</mark> unobserved confounders (anything constant within each group)
+- Controls for common <mark>time trends</mark> (anything affecting both groups equally)
+- Intuitive and transparent
+- Widely used in policy evaluation
+
+**When to use DiD:**
+
+- A policy or program is implemented in some units but not others
+- You have data from before and after the intervention
+- You can identify a plausible comparison group
+- Pre-trends are approximately parallel
+
+:::
+
+::: {.column width="50%"}
+
+**Limitations:**
+
+- <mark>Does not</mark> control for time-varying confounders that differ between groups
+- Parallel trends is untestable for the post-period
+- Standard errors need clustering at the group level when treatment is assigned at the group level
+
+::: {.callout-tip}
+## Extensions
+
+Modern DiD methods handle more complex settings:
+
+- **Staggered adoption**: different units adopt treatment at different times (`did` package, Callaway & Sant'Anna, 2021)
+- **Multiple periods**: event-study designs that show dynamic effects
+- **Continuous treatment**: generalizations beyond binary treatment
+:::
+
+:::
+::::
+
+# Part V: Putting It All Together {background-color="#005030"}
+
+## Choosing a Method {.smaller}
+
+:::: columns
+::: {.column width="50%"}
+
+| Method | Key Assumption | Best For |
+|--------|---------------|----------|
+| **Propensity Score (IPW/Matching)** | No unmeasured confounding | Cross-sectional observational data with rich covariates |
+| **Difference-in-Differences** | Parallel trends | Panel data with a natural experiment or policy change |
+| **Regression Discontinuity** | Continuity at cutoff | Assignment based on a running variable with a threshold |
+| **Instrumental Variables** | Valid instrument | When unmeasured confounding exists but you have an exogenous source of variation |
+
+:::
+
+::: {.column width="50%"}
+
+::: {.callout-important}
+## No Method Is a Magic Bullet
+
+Every causal inference method relies on <mark>assumptions</mark> that cannot be fully verified from the data. The strength of a causal argument comes from:
+
+1. **Theoretical justification** for the assumptions
+2. **Empirical checks** (balance, pre-trends, placebo tests)
+3. **Sensitivity analyses** (how much violation is needed to change the conclusion?)
+4. **Triangulation** across multiple methods and data sources
+:::
+
+:::
+::::
+
+## A Complete Simulation: Bias, IPW, and DiD {.smaller}
+
+Let's compare all approaches on our simulated data:
 
 ```{r}
 #| echo: true
-#| eval: false
 
-fit(causal_effect_wflow, data = finaldata) |>
-    tidy(exp = TRUE, conf.int = TRUE)
+results <- tibble(
+    Method = c(
+        "1. Naive (no adjustment)",
+        "2. Adjust for confounder",
+        "3. IPW",
+        "4. RCT (gold standard)"
+    ),
+    Estimate = c(
+        coef(lm(y_obs ~ treatment_obs, data = sim_data))["treatment_obs"],
+        coef(lm(y_obs ~ treatment_obs + baseline_risk, data = sim_data))[
+            "treatment_obs"
+        ],
+        coef(lm(y_obs ~ treatment_obs, data = sim_data, weights = ipw))[
+            "treatment_obs"
+        ],
+        coef(lm(y_rct ~ treatment_rct, data = sim_data))["treatment_rct"]
+    ),
+    True_Effect = true_effect
+) |>
+    mutate(
+        Bias = round(Estimate - True_Effect, 2),
+        Estimate = round(Estimate, 2)
+    )
+
+kable(results)
 ```
 
-## 2. Difference in Differences (DiD) 🔀
+. . .
 
--   Evaluates average change after an intervention implementation.
--   Estimates the **counterfactual** based on a comparison group trend.
--   **Parallel Trends Assumption**: Without intervention, the treatment and control groups would have followed parallel paths.
+> Methods 2–4 all recover estimates close to the truth. The naive estimate is biased. This illustrates the value of proper causal inference design.
 
-## Example: Marijuana Legalization
+## Key Takeaways {.smaller}
 
-> **Question:** What is the effect of marijuana legalization (California, 2016-2018) on adolescent marijuana use?
+1. <mark>Causation requires more than association</mark>. The potential outcomes framework defines causation precisely through counterfactuals.
 
--   **Treatment Group**: California (CA)
--   **Control Group**: Florida (FL)
--   **Pre-Period**: 2017 (Early implementation)
--   **Post-Period**: 2019 (Full sales)
+2. <mark>Randomization solves the problem</mark> by making treatment independent of all confounders. But randomization isn't always feasible.
 
-## DiD Visualization
+3. <mark>Propensity score methods</mark> (IPW, matching) reconstruct balance from observational data by modeling the treatment assignment mechanism. They rely on **no unmeasured confounding**.
 
-```{r}
-#| echo: true
-#| eval: false
+4. <mark>Difference-in-Differences</mark> leverages natural experiments and controls for time-invariant confounders by comparing changes over time. It relies on **parallel trends**.
 
-diff_diff %>%
-    ggplot(aes(x = year, y = nmarijuana, color = state, group = state)) +
-    geom_smooth(method = "glm", se = F) +
-    labs(y = "Marijuana Prevalence", x = "Year")
-```
+5. <mark>No method is assumption-free</mark>. The credibility of causal claims rests on the plausibility of the identifying assumptions, empirical checks, and sensitivity analyses.
 
-## Estimating DiD
+6. <mark>Design before analysis</mark>. Following Rubin's framework, construct balanced groups (or identify natural experiments) before examining outcomes.
 
-Model:
-$$Y = \beta_0 + \beta_1 \text{Treatment} + \beta_2 \text{Time} + \beta_3 (\text{Treatment} \times \text{Time}) + \epsilon$$
+## References {.smaller}
 
-$\beta_3$ is the **Difference-in-Differences estimator**.
+- Rubin, D. B. (2007). The design versus the analysis of observational studies for causal effects: Parallels with the design of randomized trials. *Statistics in Medicine, 26*(1), 20–36.
+- Rosenbaum, P. R., & Rubin, D. B. (1983). The central role of the propensity score in observational studies for causal effects. *Biometrika, 70*(1), 41–55.
+- Shadish, W. R. (2010). Campbell and Rubin: A primer and comparison of their approaches to causal inference in field settings. *Psychological Methods, 15*(1), 3–17.
+- Callaway, B., & Sant'Anna, P. H. C. (2021). Difference-in-differences with multiple time periods. *Journal of Econometrics, 225*(2), 200–230.
+- Imbens, G. W., & Rubin, D. B. (2015). *Causal Inference for Statistics, Social, and Biomedical Sciences*. Cambridge University Press.
 
-```{r}
-#| echo: true
-#| eval: false
-
-formula_did <- recipe(
-    marijuana ~ year + treatment + interaction,
-    data = diff_diff2
-)
-
-fit(did_wflow, data = diff_diff2) |>
-    tidy(conf.int = TRUE, exp = T)
-```
-
-## Summary 🥳
-
--   **Observational Studies**: Require careful design to mimic experiments.
--   **Propensity Scores**: Help balance groups (Matching, IPW).
--   **Difference in Differences**: Controls for time-invariant unobserved confounders by comparing trends.
+## Questions?

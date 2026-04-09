@@ -25,6 +25,8 @@ website:
         text: Dyadic
       - href: causal/index.qmd
         text: Causal
+      - href: growthcurve/index.qmd
+        text: Growth Curves
   page-footer:
     background: primary
     foreground: light
