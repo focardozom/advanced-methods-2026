@@ -37,6 +37,11 @@ Hi! I have included links and instructions for my sessions below (Francisco). Pl
 
 :::
 
+## Bonus
+
+- [**Growth curve models**](growthcurve/index.qmd)
+  <br>*Latent growth vs. multilevel: one dataset, two specifications in R*
+
 ## Contact
 
 **Instructors**: [Francisco Cardozo](https://focardozom.github.io) & Eric C. Brown. 
